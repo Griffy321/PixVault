@@ -1,12 +1,24 @@
+import sys
 import pathlib
 import time
 
-while True:
-    filePath = input("Please enter a file path >")
-    pathExists = pathlib.Path(filePath).exists()
-    if pathExists == True:
-        print("The file exists, fetching data...")
-        time.sleep(3) # makes it look like it's doing something 
-        
-    else:
-        print("Ran into error - try a different path please")
+from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import Qt
+
+from app.main_window import MainWindow
+
+
+def main():
+    app = QApplication(sys.argv)
+    app.setStyle("Fusion")
+
+    window = MainWindow()
+    window.show()
+
+    sys.exit(app.exec())
+
+
+if __name__ == "__main__":
+    main()
+
+
