@@ -1,7 +1,7 @@
 """
-Class to handel photo and video saving from one device to the other
+Class to handle photo and video saving from one device to the other
 """
 
-class DataTransferSaving:
+class FileSaving:
     def __init__(self):
         pass

@@ -5,7 +5,6 @@ class FileNavigation():
     
     sdCardFolder = "adb/shell/ls/sdcard"
 
-
     def __init__(self):
         pass
 
@@ -51,6 +50,9 @@ class FileNavigation():
         """Returns the currently loaded list of files."""
         pass
 
-print(FileNavigation().toFiles())
-print(FileNavigation().buildPath())
 
+# print(FileNavigation().toFiles())
+# print(FileNavigation().buildPath())
+
+# sdCardFolder = "adb/shell/ls/sdcard"
+# print(subprocess.run(sdCardFolder.split("/"), capture_output=True, text=True))
