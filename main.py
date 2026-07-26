@@ -1,4 +1,4 @@
-from navigation import FileNavigation
+from device import FileNavigation
 from visualisation import OpenImage
 
 

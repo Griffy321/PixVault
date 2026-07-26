@@ -1,4 +1,4 @@
-import subprocess
+from device.adb import ADB
 
 # TODO LIST — keep this simple. The only job is: reach a folder, then hand its
 # images/videos to the swipe view. Anything beyond that is out of scope.
@@ -9,30 +9,16 @@ import subprocess
 #
 # 5. Validate the folder exists before entering it. Right now a typo just returns
 #    an empty list and looks the same as an empty folder.
-#
-# 6. Build commands as a real list (["adb", "shell", "ls", path]) instead of
-#    splitting a string on "/" — folder names with spaces break the current way.
 
 
 class FileNavigation():
-    """Handles filesystem navigation on an Android device over ADB."""
-
-    headFolder = "adb/shell/ls"
-
+    """Handles filesystem navigation on an Android device using the ADB."""
 
     def __init__(self):
-        # Path segments, top-level first. Joined on demand by currentPath().
+        # Path segments, top-level first - joined on demand by currentPath().
         self.currentLocation = ["sdcard"]
-
-
-    def isDeviceConnected(self):
-        """Returns True if exactly one authorised device is visible to ADB."""
-        output = subprocess.run(["adb", "devices"], capture_output=True, text=True)
-        deviceID = output.stdout.replace("List of devices attached", "").replace("device", "").strip()
-
-        if len(deviceID) >= 10: # check to make sure we've not picked up some random word
-            return [True, deviceID]
-        return [False, deviceID]
+        self.mediaFiles = [".jpg", ".jpeg", ".png", ".heic", ".mp4", ".mov"]
+        self.adb = ADB()
 
 
     def goBack(self):
@@ -50,38 +36,29 @@ class FileNavigation():
 
 
     # TODO: implement — see item 4 above
-    def listFolders(self):
+    def listFolders(self, folderContents):
         """Returns just the subfolders at the current location."""
+        # try to just use .endswith()
+        # for value in folderContents:
+        #     if value.endswith()
         pass
 
 
     # TODO: implement — see item 4 above
-    def listMediaFiles(self):
+    def listMediaFiles(self, folderContents:list):
         """Returns just the images/videos at the current location."""
+        # files = []
+        # for value in folderContents:
+        #     if value.endswith(self.mediaFiles.__getitem__):
+        #         files.append(value)
+        # return files
         pass
-
-
-    def fromHeadDir(self, path):
-        """
-        navigates down from the relitive top of the file directory to where the user specifies
-        """
-        startingPath = self.headFolder.split("/") 
-        result = subprocess.run(startingPath + [path], capture_output=True, text=True)
-        return result.stdout.strip().splitlines()
-
-
-    def toFiles(self): # we will try this if we have files selected
-        """
-        Loads files from the device into memory for further processing.
-        """
-        result = subprocess.run(self.headFolder.split("/") + ["sdcard"], capture_output=True, text=True)
-        return result.stdout.strip().splitlines()
 
 
     def buildPath(self):
         """Constructs an absolute path string by appending a folder name to the base directory."""
         # check if device is connected
-        deviceConnected = self.isDeviceConnected()
+        deviceConnected = self.adb.isDeviceConnected()
         if deviceConnected[0]:
             print(f"Device successfully connected! ID : {deviceConnected[1]}")
         else:
@@ -89,10 +66,10 @@ class FileNavigation():
 
         while True:
             # List first, so position is always bound and always matches where we are.
-            position = self.fromHeadDir(path=self.currentPath())
+            position = self.adb.fromHeadDir(path=self.currentPath())
             print(f"\nCurrent location: {self.currentPath()}")
             print(position)
-
+            print(self.listMediaFiles(position))
             nextStep = input("Please enter the next folder you want to navigate to: ")
             if nextStep.lower() == "stop":
                 return position
