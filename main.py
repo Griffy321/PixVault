@@ -3,8 +3,8 @@ from visualisation import OpenImage
 
 
 def main():
-    print(FileNavigation().toFiles())
     # stop
+    # back
     print(FileNavigation().buildPath())
 
 
