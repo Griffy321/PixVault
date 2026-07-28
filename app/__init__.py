@@ -1,0 +1,1 @@
+from app.navigation_view import NavigationScreen as NavigationScreen

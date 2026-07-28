@@ -54,6 +54,13 @@ class FileNavigation():
         # return files
         pass
 
+    def validate_move(self, user_input, choices):
+        if user_input in choices:
+            print("Folder found, navigating in.")
+            return True
+        else:
+            print("Folder not found, please specify a real path.")
+            return False
 
     def buildPath(self):
         """Constructs an absolute path string by appending a folder name to the base directory."""
@@ -69,11 +76,10 @@ class FileNavigation():
             position = self.adb.fromHeadDir(path=self.currentPath())
             print(f"\nCurrent location: {self.currentPath()}")
             print(position)
-            print(self.listMediaFiles(position))
             nextStep = input("Please enter the next folder you want to navigate to: ")
             if nextStep.lower() == "stop":
                 return position
             elif nextStep.lower() == "back":
                 self.goBack()
-            else:
+            elif self.validate_move(user_input=nextStep, choices=position):
                 self.currentLocation.append(nextStep) # add check on curent path here
