@@ -16,10 +16,6 @@ class NavigationScreen(QWidget):
     FileNavigation held in self.files, which buildScreen() is given.
     """
 
-    # Emitted when the user confirms the folder they want to back up.
-    # Carries the chosen path, e.g. "sdcard/DCIM/Camera". The backup
-    # screen listens for this - navigation itself does not need to know
-    # what happens next.
     folderConfirmed = Signal(str)
 
     def __init__(self):
