@@ -1,85 +1,72 @@
 from device.adb import ADB
 
-# TODO LIST — keep this simple. The only job is: reach a folder, then hand its
-# images/videos to the swipe view. Anything beyond that is out of scope.
-#
-# 4. listFolders() vs listMediaFiles() — split the ls output into subfolders and
-#    media files (.jpg/.jpeg/.png/.heic/.mp4/.mov). Folders are what you navigate
-#    into; media files are what you stop at and pass to the swipe view.
-#
-# 5. Validate the folder exists before entering it. Right now a typo just returns
-#    an empty list and looks the same as an empty folder.
-
 
 class FileNavigation():
     """Handles filesystem navigation on an Android device using the ADB."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Path segments, top-level first - joined on demand by currentPath().
-        self.currentLocation = ["sdcard"]
-        self.mediaFiles = [".jpg", ".jpeg", ".png", ".heic", ".mp4", ".mov"]
-        self.adb = ADB()
+        self.currentLocation: list[str] = ["sdcard"]
+        self.mediaFiles: list[str] = [".jpg", ".jpeg", ".png", ".heic", ".mp4", ".mov"]
+        self.adb: ADB = ADB()
+        self.folderContence = []
 
 
-    def goBack(self):
+    def goBack(self) -> None:
         """Steps up one folder, stopping at /sdcard."""
-        if len(self.currentLocation) == 1:
-            print("You are already at the top folder, please navigate down from here")
-        else:
+        if len(self.currentLocation) > 1:
             self.currentLocation.pop(-1)
-            print(f"You went back, the new current location is : {self.currentPath()}")
+        print(self.currentLocation)
 
 
-    def currentPath(self):
+    def currentPath(self) -> str:
         """Returns the current location as a printable path string."""
         return "/".join(self.currentLocation)
 
 
     # TODO: implement — see item 4 above
-    def listFolders(self, folderContents):
+    def listFolders(self, folderContents: list[str]) -> list[str]:
         """Returns just the subfolders at the current location."""
-        # try to just use .endswith()
-        # for value in folderContents:
-        #     if value.endswith()
-        pass
-
+        folders = []
+        for string in folderContents:
+            if "." in string:
+                continue
+            else:
+                folders.append(string) # add verificatrion
+        return folders
 
     # TODO: implement — see item 4 above
-    def listMediaFiles(self, folderContents:list):
+    def listMediaFiles(self, folderContents: list[str]) -> list[str]:
         """Returns just the images/videos at the current location."""
-        # files = []
-        # for value in folderContents:
-        #     if value.endswith(self.mediaFiles.__getitem__):
-        #         files.append(value)
-        # return files
-        pass
+        files = []
+        for string in folderContents:
+            if "." in string:
+                files.append(string) # add verificatrion
+            else:
+                continue
+        return files
 
-    def validate_move(self, user_input, choices):
-        if user_input in choices:
-            print("Folder found, navigating in.")
+    def validateMove(self, userInput: str, choices: list[str]) -> bool:
+        if userInput in choices:
             return True
         else:
-            print("Folder not found, please specify a real path.")
             return False
 
-    def buildPath(self):
-        """Constructs an absolute path string by appending a folder name to the base directory."""
-        # check if device is connected
+    def buildPath(self, step: str) -> list[str] | None:
+        """
+        Constructs an absolute path string by appending a folder name to the base directory.
+        Returns the contence of the current folder  
+        """
         deviceConnected = self.adb.isDeviceConnected()
         if deviceConnected[0]:
-            print(f"Device successfully connected! ID : {deviceConnected[1]}")
+            position = self.adb.fromHeadDir(path=self.currentPath())
+            if step.lower() == "stop":
+                return position
+            elif step.lower() == "back":
+                self.goBack()
+            elif self.validateMove(userInput=step, choices=position):
+                self.currentLocation.append(step) # add check on curent path here
+                self.folderContence = self.adb.fromHeadDir(path=self.currentPath())
+                return self.folderContence
         else:
             raise RuntimeError(f"Unable to detect a connected device, please connect or check the connection of your device \n{deviceConnected}")
-
-        while True:
-            # List first, so position is always bound and always matches where we are.
-            position = self.adb.fromHeadDir(path=self.currentPath())
-            print(f"\nCurrent location: {self.currentPath()}")
-            print(position)
-            nextStep = input("Please enter the next folder you want to navigate to: ")
-            if nextStep.lower() == "stop":
-                return position
-            elif nextStep.lower() == "back":
-                self.goBack()
-            elif self.validate_move(user_input=nextStep, choices=position):
-                self.currentLocation.append(nextStep) # add check on curent path here

@@ -1,21 +1,141 @@
-from PySide6 import QtCore, QtWidgets, QtGui
+from PySide6.QtWidgets import (
+    QPushButton, QWidget, QVBoxLayout , QLineEdit, QLabel, QListWidget,
+    QListWidgetItem, QMessageBox
+)
+from PySide6.QtCore import Signal
 import sys
 import random
+from device import FileNavigation
 
-class NavigationScreen(QtWidgets.QWidget):
+class NavigationScreen(QWidget):
+    """
+    The screen for picking which folder to back up. Shows the current path,
+    lists what is in it, and lets you move up and down until you confirm one.
+
+    Only deals with widgets - the actual path work belongs to
+    FileNavigation held in self.files, which buildScreen() is given.
+    """
+
+    # Emitted when the user confirms the folder they want to back up.
+    # Carries the chosen path, e.g. "sdcard/DCIM/Camera". The backup
+    # screen listens for this - navigation itself does not need to know
+    # what happens next.
+    folderConfirmed = Signal(str)
 
     def __init__(self):
-        super().__init__() # a way to refer to the super class without calling 
-        self.folders = []
+        super().__init__() # a way to refer to the super class without calling
+        self.layout = QVBoxLayout(self)
+        self.resize(800, 600)
+        self.setMinimumSize(800, 600)
 
-        self.button = QtWidgets.QPushButton("Click Here!")
-        self.text = QtWidgets.QLabel("Hello World", alignment=QtCore.Qt.AlignCenter)
+    # builders - make a widget and add it to the layout (run once)
 
-        self.layout = QtWidgets.QVBoxLayout(self)
-        self.layout.addWidget(self.text)
-        self.layout.addWidget(self.button)
+    def buildScreen(self, files:FileNavigation) -> None:
+        """Stores files as self.files, runs the builders in display order, then
+        refreshes to draw the starting folder."""
+        self.files = files
+        self.buildPathLabel()
+        self.buildSearchFolder()
+        self.buildFileList()
+        self.buildBack()
+        self.buildConfirm()
+        self.refresh()
 
-        self.button.clicked.connect(self.magic)
+    def buildPathLabel(self) -> None:
+        """Creates self.pathLabel, the "you are here" line. refresh() updates it."""
+        self.pathLabel = QLabel(f"You're currently in : {self.files.currentPath()}")
+        self.layout.insertWidget(0, self.pathLabel)
 
-    def magic(self):
-        return [folder for folder in self.folders]
+    # TODO: implement
+    def buildConfirm(self) -> None:
+        """Creates the "Back Up This Folder" button. Connects to onConfirmClicked;
+        worth disabling while the folder holds no media."""
+        pass
+
+    def buildSearchFolder(self):
+        """Creates the search bar and its button, wired to onSearchClicked."""
+        button = QPushButton("Search Folder")
+        self.searchBar = QLineEdit()
+        self.layout.addWidget(button)
+        self.layout.addWidget(self.searchBar)
+        button.clicked.connect(lambda: self.onSearchClicked(self.searchBar.text()))
+
+    def buildBack(self):
+        """Creates the back button, wired to onBackClicked."""
+        button = QPushButton("Go Back")
+        self.layout.addWidget(button)
+        button.clicked.connect(lambda: self.onBackClicked())
+
+    def buildFileList(self):
+        """Creates self.contentsList and wires double-clicks to onItemDoubleClicked."""
+        self.contentsList = QListWidget()
+        self.layout.insertWidget(-1, self.contentsList)
+        self.contentsList.itemDoubleClicked.connect(lambda: self.onItemDoubleClicked())
+
+    # handlers - respond to a click (run every time the user acts)
+
+    def onBackClicked(self) -> None:
+        """Steps up one folder and redraws."""
+        self.files.goBack()
+        self.refresh()
+
+    def onSearchClicked(self, step):
+        """Jumps to the folder typed in the search bar and redraws."""
+        self.files.buildPath(step)
+        self.refresh()
+
+    # TODO: implement
+    def onItemDoubleClicked(self, item: QListWidgetItem) -> None:
+        """Enters the double-clicked row if it is a folder. Media rows are ignored."""
+        pass
+
+    # TODO: implement
+    def onConfirmClicked(self) -> None:
+        """Emits folderConfirmed with the current path. Everything in that folder
+        gets backed up, so there is no per-file selection to gather."""
+        pass
+
+    # shared - the work both of the above lean on
+
+    def refresh(self) -> None:
+        """Re-reads the current folder from the device and redraws the label and
+        list. Every action that changes location ends by calling this."""
+        path = self.files.currentPath()
+        listing = self.files.adb.fromHeadDir(path=path)
+        self.populateList(listing)                          # fileList.clear() then addItem() each row
+        self.pathLabel.setText(f"You're currently in : {path}")
+
+    def populateList(self, folderContents: list[str]) -> None:
+        """Refills the list from a raw ADB listing, folders first with a trailing
+        "/" so onItemDoubleClicked can tell them from media."""
+        self.listing = folderContents
+        self.contentsList.clear()
+
+        folders = self.files.listFolders(folderContents)
+        for folder in folders:
+            print(f"added the folder - {folder} - to the list")
+            self.contentsList.addItem(f"{folder}/")
+
+        files = self.files.listMediaFiles(folderContents)
+        for file in files:
+            print(f"added the file - {file} - to the list")
+            self.contentsList.addItem(file)
+
+
+    # TODO: implement
+    def enterFolder(self, name: str) -> None:
+        """Steps into name via buildPath() and redraws. None means the name was not
+        valid; RuntimeError means no device - send both to showError()."""
+        pass
+
+    # TODO: implement
+    def mediaInCurrentFolder(self) -> list[str]:
+        """Returns the media files in the current folder, for the confirm button's
+        count and enabled state."""
+        pass
+
+    # TODO: implement
+    def showError(self, message: str) -> None:
+        """Shows message in a QMessageBox, so errors surface somewhere other than
+        the terminal."""
+        pass
