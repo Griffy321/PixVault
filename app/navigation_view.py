@@ -66,7 +66,7 @@ class NavigationScreen(QWidget):
         """Creates self.contentsList and wires double-clicks to onItemDoubleClicked."""
         self.contentsList = QListWidget()
         self.layout.insertWidget(-1, self.contentsList)
-        self.contentsList.itemDoubleClicked.connect(lambda: self.onItemDoubleClicked())
+        self.contentsList.itemDoubleClicked.connect(lambda item: self.onItemDoubleClicked(item))
 
     # handlers - respond to a click (run every time the user acts)
 
@@ -83,7 +83,13 @@ class NavigationScreen(QWidget):
     # TODO: implement
     def onItemDoubleClicked(self, item: QListWidgetItem) -> None:
         """Enters the double-clicked row if it is a folder. Media rows are ignored."""
-        pass
+        try:
+            folder = item.text().replace("/", "")
+            if folder in self.files.listFolders(self.listing):
+                self.files.buildPath(folder)
+                self.refresh()
+        except Exception as e:
+            print(e)
 
     # TODO: implement
     def onConfirmClicked(self) -> None:

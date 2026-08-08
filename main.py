@@ -3,8 +3,6 @@ from visualisation import OpenImage
 from app import NavigationScreen
 import sys
 from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import Slot
-from device import ADB
 
 
 def main():
@@ -14,8 +12,6 @@ def main():
     nav.buildScreen(files)
     nav.show()
     sys.exit(app.exec())
-
-
 
 
 if __name__ == "__main__":
