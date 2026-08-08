@@ -59,8 +59,8 @@ then select the files you want to pull across.
 
 ## Contributing
 
-Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) if it is available, or open an issue to discuss a
-change before starting work.
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, code style, and how to open a pull
+request. Please open an issue to discuss anything larger than a small fix before starting work.
 
 ## License
 
