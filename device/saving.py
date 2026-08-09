@@ -15,5 +15,5 @@ class FileSaving:
         """
         Loads files from the device into memory for further processing.
         """
-        result = subprocess.run(self.adb.headFolder.split("/") + ["sdcard"], capture_output=True, text=True)
+        result = subprocess.run(self.adb.headFolder + ["sdcard"], capture_output=True, text=True)
         return result.stdout.strip().splitlines()

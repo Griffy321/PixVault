@@ -1,11 +1,84 @@
 from PySide6.QtWidgets import (
-    QPushButton, QWidget, QVBoxLayout , QLineEdit, QLabel, QListWidget,
-    QListWidgetItem, QMessageBox
+    QPushButton, QWidget, QVBoxLayout , QHBoxLayout, QLineEdit, QLabel,
+    QListWidget, QListWidgetItem, QMessageBox
 )
 from PySide6.QtCore import Signal
 import sys
 import random
 from device import FileNavigation
+
+STYLESHEET = """
+QWidget {
+    background-color: #f4f5f7;
+    color: #1f2430;
+    font-family: "Segoe UI", sans-serif;
+    font-size: 13px;
+}
+
+QLabel#pathLabel {
+    color: #5a6270;
+    font-size: 12px;
+    padding-bottom: 2px;
+}
+
+QLineEdit {
+    background-color: #ffffff;
+    border: 1px solid #d2d6dd;
+    border-radius: 6px;
+    padding: 7px 10px;
+}
+QLineEdit:focus {
+    border-color: #3d7eff;
+}
+
+QListWidget {
+    background-color: #ffffff;
+    border: 1px solid #d2d6dd;
+    border-radius: 6px;
+    padding: 4px;
+    outline: none;
+}
+QListWidget::item {
+    padding: 7px 8px;
+    border-radius: 4px;
+}
+QListWidget::item:hover {
+    background-color: #eef1f6;
+}
+QListWidget::item:selected {
+    background-color: #3d7eff;
+    color: #ffffff;
+}
+
+QPushButton {
+    background-color: #ffffff;
+    border: 1px solid #d2d6dd;
+    border-radius: 6px;
+    padding: 7px 16px;
+}
+QPushButton:hover {
+    background-color: #eaecf1;
+}
+QPushButton:pressed {
+    background-color: #dee1e8;
+}
+
+QPushButton#confirmButton {
+    background-color: #3d7eff;
+    border-color: #3d7eff;
+    color: #ffffff;
+    font-weight: 600;
+}
+QPushButton#confirmButton:hover {
+    background-color: #2f6cea;
+}
+QPushButton#confirmButton:disabled {
+    background-color: #dfe2e8;
+    border-color: #dfe2e8;
+    color: #9aa1ad;
+}
+"""
+
 
 class NavigationScreen(QWidget):
     """
@@ -21,8 +94,12 @@ class NavigationScreen(QWidget):
     def __init__(self):
         super().__init__() # a way to refer to the super class without calling
         self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(20, 18, 20, 18)
+        self.layout.setSpacing(12)
         self.resize(800, 600)
         self.setMinimumSize(800, 600)
+        self.setWindowTitle("PixVault - Choose a folder")
+        self.setStyleSheet(STYLESHEET)
 
     # builders - make a widget and add it to the layout (run once)
 
@@ -33,6 +110,7 @@ class NavigationScreen(QWidget):
         self.buildPathLabel()
         self.buildSearchFolder()
         self.buildFileList()
+        self.buildFooter()
         self.buildBack()
         self.buildConfirm()
         self.refresh()
@@ -40,33 +118,51 @@ class NavigationScreen(QWidget):
     def buildPathLabel(self) -> None:
         """Creates self.pathLabel, the "you are here" line. refresh() updates it."""
         self.pathLabel = QLabel(f"You're currently in : {self.files.currentPath()}")
-        self.layout.insertWidget(0, self.pathLabel)
-
-    # TODO: implement
-    def buildConfirm(self) -> None:
-        """Creates the "Back Up This Folder" button. Connects to onConfirmClicked;
-        worth disabling while the folder holds no media."""
-        pass
+        self.pathLabel.setObjectName("pathLabel")
+        self.layout.addWidget(self.pathLabel)
 
     def buildSearchFolder(self):
-        """Creates the search bar and its button, wired to onSearchClicked."""
-        button = QPushButton("Search Folder")
-        self.searchBar = QLineEdit()
-        self.layout.addWidget(button)
-        self.layout.addWidget(self.searchBar)
-        button.clicked.connect(lambda: self.onSearchClicked(self.searchBar.text()))
+        """Creates the search bar and its button on one row, wired to onSearchClicked."""
+        row = QHBoxLayout()
+        row.setSpacing(8)
 
-    def buildBack(self):
-        """Creates the back button, wired to onBackClicked."""
-        button = QPushButton("Go Back")
-        self.layout.addWidget(button)
-        button.clicked.connect(lambda: self.onBackClicked())
+        self.searchBar = QLineEdit()
+        self.searchBar.setPlaceholderText("Type a folder name, then press Enter")
+        button = QPushButton("Search Folder")
+
+        row.addWidget(self.searchBar)
+        row.addWidget(button)
+        self.layout.addLayout(row)
+
+        button.clicked.connect(lambda: self.onSearchClicked(self.searchBar.text()))
+        self.searchBar.returnPressed.connect(lambda: self.onSearchClicked(self.searchBar.text()))
 
     def buildFileList(self):
         """Creates self.contentsList and wires double-clicks to onItemDoubleClicked."""
         self.contentsList = QListWidget()
-        self.layout.insertWidget(-1, self.contentsList)
+        self.layout.addWidget(self.contentsList, stretch=1)
         self.contentsList.itemDoubleClicked.connect(lambda item: self.onItemDoubleClicked(item))
+
+    def buildFooter(self) -> None:
+        """Creates self.footerRow, the row the two buttons sit in."""
+        self.footerRow = QHBoxLayout()
+        self.footerRow.setSpacing(8)
+        self.footerRow.addStretch()
+        self.layout.addLayout(self.footerRow)
+
+    def buildBack(self):
+        """Creates the back button, wired to onBackClicked."""
+        button = QPushButton("Go Back")
+        self.footerRow.insertWidget(0, button)      # left of the stretch
+        button.clicked.connect(lambda: self.onBackClicked())
+
+    def buildConfirm(self) -> None:
+        """Creates the "Back Up This Folder" button. Connects to onConfirmClicked;
+        worth disabling while the folder holds no media."""
+        self.confirmButton = QPushButton("Select Folder for Backup")
+        self.confirmButton.setObjectName("confirmButton")
+        self.footerRow.addWidget(self.confirmButton)   # right of the stretch
+        self.confirmButton.clicked.connect(lambda: self.onConfirmClicked())
 
     # handlers - respond to a click (run every time the user acts)
 
@@ -91,11 +187,10 @@ class NavigationScreen(QWidget):
         except Exception as e:
             print(e)
 
-    # TODO: implement
     def onConfirmClicked(self) -> None:
         """Emits folderConfirmed with the current path. Everything in that folder
         gets backed up, so there is no per-file selection to gather."""
-        pass
+        self.folderConfirmed.emit(self.files.currentPath())
 
     # shared - the work both of the above lean on
 
@@ -122,13 +217,6 @@ class NavigationScreen(QWidget):
         for file in files:
             print(f"added the file - {file} - to the list")
             self.contentsList.addItem(file)
-
-
-    # TODO: implement
-    def enterFolder(self, name: str) -> None:
-        """Steps into name via buildPath() and redraws. None means the name was not
-        valid; RuntimeError means no device - send both to showError()."""
-        pass
 
     # TODO: implement
     def mediaInCurrentFolder(self) -> list[str]:

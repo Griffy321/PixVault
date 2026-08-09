@@ -1,4 +1,5 @@
 import subprocess
+import shlex # shell lexicon
 
 # TODO LIST
 #
@@ -11,7 +12,7 @@ import subprocess
 class ADB():
     """wrapper around the adb command line so we can interact with the device easily."""
 
-    headFolder = "adb/shell/ls"
+    headFolder = ["adb", "shell", "ls"]
 
 
     def isDeviceConnected(self):
@@ -28,6 +29,5 @@ class ADB():
         """
         navigates down from the relitive top of the file directory to where the user specifies
         """
-        startingPath = self.headFolder.split("/")
-        result = subprocess.run(startingPath + [path], capture_output=True, text=True)
+        result = subprocess.run(self.headFolder + [shlex.quote(path)], capture_output=True, text=True)
         return result.stdout.strip().splitlines()
