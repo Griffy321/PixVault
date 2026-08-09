@@ -1,13 +1,7 @@
 import subprocess
 import shlex # shell lexicon
 
-# TODO LIST
-#
-# 6. Build commands as a real list (["adb", "shell", "ls", path]) instead of
-#    splitting a string on "/" — folder names with spaces break the current way.
-#
 # learn how to use *args and **kwargs when making this if possible
-
 
 class ADB():
     """wrapper around the adb command line so we can interact with the device easily."""
