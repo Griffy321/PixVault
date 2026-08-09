@@ -8,7 +8,6 @@ class ADB():
 
     headFolder = ["adb", "shell", "ls"]
 
-
     def isDeviceConnected(self):
         """Returns True if exactly one authorised device is visible to ADB."""
         output = subprocess.run(["adb", "devices"], capture_output=True, text=True)

@@ -3,8 +3,6 @@ from PySide6.QtWidgets import (
     QListWidget, QListWidgetItem, QMessageBox
 )
 from PySide6.QtCore import Signal
-import sys
-import random
 from device import FileNavigation
 
 STYLESHEET = """
@@ -76,6 +74,28 @@ QPushButton#confirmButton:disabled {
     background-color: #dfe2e8;
     border-color: #dfe2e8;
     color: #9aa1ad;
+}
+
+QMessageBox {
+    background-color: #ffffff;
+}
+
+/* Internal object names Qt gives the two lines of a message box. */
+QMessageBox QLabel#qt_msgbox_label {
+    color: #1f2430;
+    font-size: 15px;
+    font-weight: 600;
+    min-width: 320px;           /* stops one-word errors making a tiny box */
+    padding-bottom: 4px;
+}
+QMessageBox QLabel#qt_msgbox_informativelabel {
+    color: #5a6270;
+    font-size: 13px;
+}
+
+QMessageBox QPushButton {
+    min-width: 78px;
+    padding: 7px 18px;
 }
 """
 
@@ -173,10 +193,12 @@ class NavigationScreen(QWidget):
 
     def onSearchClicked(self, step):
         """Jumps to the folder typed in the search bar and redraws."""
-        self.files.buildPath(step)
-        self.refresh()
+        try:
+            self.files.buildPath(step)
+            self.refresh()
+        except Exception:
+            self.showError("Please specify a folder from the ones shown on the page.")
 
-    # TODO: implement
     def onItemDoubleClicked(self, item: QListWidgetItem) -> None:
         """Enters the double-clicked row if it is a folder. Media rows are ignored."""
         try:
@@ -184,8 +206,10 @@ class NavigationScreen(QWidget):
             if folder in self.files.listFolders(self.listing):
                 self.files.buildPath(folder)
                 self.refresh()
+            else:
+                self.showError("Please double click a folder to use this action.")
         except Exception as e:
-            print(e)
+            self.showError(e)
 
     def onConfirmClicked(self) -> None:
         """Emits folderConfirmed with the current path. Everything in that folder
@@ -199,8 +223,12 @@ class NavigationScreen(QWidget):
         list. Every action that changes location ends by calling this."""
         path = self.files.currentPath()
         listing = self.files.adb.fromHeadDir(path=path)
-        self.populateList(listing)                          # fileList.clear() then addItem() each row
-        self.pathLabel.setText(f"You're currently in : {path}")
+        if path == "sdcard" and len(listing) == 0: # check the device is still connected when in a place that should have files
+            self.showError("Please check your device is connected")
+        else:
+            self.populateList(listing) # contentsList.clear() then addItem() each row
+            self.pathLabel.setText(f"You're currently in : {path}")
+            self.updateConfirmButton()
 
     def populateList(self, folderContents: list[str]) -> None:
         """Refills the list from a raw ADB listing, folders first with a trailing
@@ -210,22 +238,37 @@ class NavigationScreen(QWidget):
 
         folders = self.files.listFolders(folderContents)
         for folder in folders:
-            print(f"added the folder - {folder} - to the list")
             self.contentsList.addItem(f"{folder}/")
 
         files = self.files.listMediaFiles(folderContents)
         for file in files:
-            print(f"added the file - {file} - to the list")
             self.contentsList.addItem(file)
 
-    # TODO: implement
     def mediaInCurrentFolder(self) -> list[str]:
         """Returns the media files in the current folder, for the confirm button's
-        count and enabled state."""
-        pass
+        count and enabled state. Reads the listing refresh() already fetched rather
+        than asking the device again."""
+        return self.files.listMediaFiles(self.listing)
 
-    # TODO: implement
+    def updateConfirmButton(self) -> None:
+        """Enables the confirm button only when the folder holds media, and shows the
+        count so the user knows what they are committing to before they click."""
+        count = len(self.mediaInCurrentFolder())
+        self.confirmButton.setEnabled(count > 0)
+        if count:
+            self.confirmButton.setText(f"Back Up {count} Item{'' if count == 1 else 's'}")
+        else:
+            self.confirmButton.setText("No Media In This Folder")
+
     def showError(self, message: str) -> None:
         """Shows message in a QMessageBox, so errors surface somewhere other than
         the terminal."""
-        pass
+        error = QMessageBox(self)
+        error.setWindowTitle("PixVault")
+        error.setIcon(QMessageBox.Icon.Warning)
+        error.setText("An Error Has Occurred:")
+        error.setInformativeText(str(message))
+        error.setStandardButtons(QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Close)
+        error.setDefaultButton(QMessageBox.StandardButton.Ok)
+        error.button(QMessageBox.StandardButton.Ok).setObjectName("confirmButton")
+        error.exec()
