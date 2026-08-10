@@ -17,10 +17,17 @@ class ADB():
             return [True, deviceID]
         return [False, deviceID]
 
-
     def fromHeadDir(self, path):
         """
         navigates down from the relitive top of the file directory to where the user specifies
         """
         result = subprocess.run(self.headFolder + [shlex.quote(path)], capture_output=True, text=True)
         return result.stdout.strip().splitlines()
+
+    def pullFiles(self, remotePath: str, localPath: str) -> bool:
+        """
+        Copies one file off the device with `adb pull`, returning True only when adb
+        exits 0 and a file exists at localPath. Returns False rather than raising, as
+        a file that will not copy is a normal result for the caller to deal with.
+        """
+        pass
