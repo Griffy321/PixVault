@@ -12,6 +12,10 @@ class FileSaving:
         self.pcFiles = Path()
         self.pcFolderContent = []
         self.toBackup = []
+        self.failedBackup = []
+        self.fileSizes = {}
+        self.totalBytes = 0
+        self.transferredBytes = 0
 
     # setting up the destination
 
@@ -59,13 +63,35 @@ class FileSaving:
         Returns the path written, or None if it was skipped or failed."""
         pass
 
-    def saveAll(self) -> dict[str, str]:
+    def saveAll(self, onProgress=None) -> dict[str, str]:
         """Runs saveFile over self.toBackup and returns each file's outcome
-        ("saved" / "skipped" / "failed") for the progress view to report."""
+        ("saved" / "skipped" / "failed") for the progress view to report.
+        Calls onProgress(transferredBytes, totalBytes) after each file, if given."""
         pass
 
     def verifySaved(self, remotePath: str, localPath: Path) -> bool:
         """Confirms the local copy is complete after a pull, so a half-written file
         from a yanked cable is not counted as backed up."""
+        pass
+
+    # telling the user how far along the backup is
+
+    def loadFileSizes(self, remoteFolder: str) -> dict[str, int]:
+        """Fills self.fileSizes from one sizesInFolder() call on remoteFolder.
+        Also what sameFile() compares against, so it is read once and shared."""
+        pass
+
+    def totalToTransfer(self) -> int:
+        """Sets self.totalBytes to the summed size of everything in self.toBackup.
+        Run after buildBackupList, as it is the fixed "of 240 MB" half of the display."""
+        pass
+
+    def bytesRemaining(self) -> int:
+        """Returns how many bytes of the backup are still to come."""
+        pass
+
+    def formatProgress(self, transferred: int, total: int) -> str:
+        """Turns raw byte counts into a line to put on screen, e.g. "12.8 MB of 240 MB".
+        Takes its numbers as arguments so it stays testable without a device attached."""
         pass
 

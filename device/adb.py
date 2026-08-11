@@ -7,6 +7,11 @@ class ADB():
     """wrapper around the adb command line so we can interact with the device easily."""
 
     headFolder = ["adb", "shell", "ls"]
+    pullFrom = ["adb", "pull"]
+    headFolderSizes = ["adb", "shell", "ls", "-l"]
+
+    def __init__(self):
+        pass
 
     def isDeviceConnected(self):
         """Returns True if exactly one authorised device is visible to ADB."""
@@ -26,8 +31,20 @@ class ADB():
 
     def pullFiles(self, remotePath: str, localPath: str) -> bool:
         """
-        Copies one file off the device with `adb pull`, returning True only when adb
-        exits 0 and a file exists at localPath. Returns False rather than raising, as
-        a file that will not copy is a normal result for the caller to deal with.
+        Copies one file off the device with `adb pull`, returning True on success and false on a fail
+        """
+        command = self.pullFrom + [remotePath, localPath]
+        result = subprocess.run(command, capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"Failed to pull file - {remotePath} - into - {localPath}\nError code: {result.returncode} \nError msg: {result.stderr}")
+            return False
+        return True
+
+    def sizesInFolder(self, path: str) -> dict[str, int]:
+        """
+        Returns {filename: bytes} for everything in path, read from one `ls -l` call
+        so a folder of 500 photos costs a single round trip rather than 500.
         """
         pass
+
+    bytes_of_files_in_a_folder = """adb shell ls -l 'sdcard/DCIM/'"""
