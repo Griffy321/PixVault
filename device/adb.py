@@ -4,7 +4,7 @@ import shlex # shell lexicon
 # learn how to use *args and **kwargs when making this if possible
 
 class ADB():
-    """wrapper around the adb command line so we can interact with the device easily."""
+    """Wrapper around the adb command line so we can interact with the device easily."""
 
     headFolder = ["adb", "shell", "ls"]
     pullFrom = ["adb", "pull"]
@@ -23,16 +23,12 @@ class ADB():
         return [False, deviceID]
 
     def fromHeadDir(self, path):
-        """
-        navigates down from the relitive top of the file directory to where the user specifies
-        """
+        """Navigates down from the relitive top of the file directory to where the user specifies"""
         result = subprocess.run(self.headFolder + [shlex.quote(path)], capture_output=True, text=True)
         return result.stdout.strip().splitlines()
 
     def pullFiles(self, remotePath: str, localPath: str) -> bool:
-        """
-        Copies one file off the device with `adb pull`, returning True on success and false on a fail
-        """
+        """Copies one file off the device with `adb pull`, returning True on success and false on a fail"""
         command = self.pullFrom + [remotePath, localPath]
         result = subprocess.run(command, capture_output=True, text=True)
         if result.returncode != 0:
@@ -41,10 +37,15 @@ class ADB():
         return True
 
     def sizesInFolder(self, path: str) -> dict[str, int]:
-        """
-        Returns {filename: bytes} for everything in path, read from one `ls -l` call
-        so a folder of 500 photos costs a single round trip rather than 500.
-        """
-        pass
+        """Returns {filename: bytes} for everything in path"""
+        command = self.headFolderSizes + [shlex.quote(path)]
+        # print(command)
+        result = subprocess.run(command, capture_output=True, text=True).stdout
+        bytesAndFiles = result.split()[2:]
+        fileSizes = {}
+        counter = 0
+        for index in range(len(bytesAndFiles)):
+            print(index)
 
-    bytes_of_files_in_a_folder = """adb shell ls -l 'sdcard/DCIM/'"""
+
+print(ADB().sizesInFolder("sdcard/DCIM/Anime"))
