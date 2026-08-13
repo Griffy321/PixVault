@@ -38,14 +38,33 @@ class ADB():
 
     def sizesInFolder(self, path: str) -> dict[str, int]:
         """Returns {filename: bytes} for everything in path"""
-        command = self.headFolderSizes + [shlex.quote(path)]
-        # print(command)
-        result = subprocess.run(command, capture_output=True, text=True).stdout
-        bytesAndFiles = result.split()[2:]
         fileSizes = {}
-        counter = 0
-        for index in range(len(bytesAndFiles)):
-            print(index)
+        command = self.headFolderSizes + [shlex.quote(path)]
+        result = subprocess.run(command, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise TypeError("File path not found")
+        outputs = result.stdout.split("\n")[1:-1]
+        outputItems = [output.split() for output in outputs]
+        for data in outputItems:
+            fileName = " ".join(data[7:])
+            try:
+                size = int(data[4]) # in bytes
+            except Exception:
+                print(f"Failed to get size for {fileName}, trying to fetch single file")
+                size = self.singleFileSize(path, fileName)
+            
+            fileSizes[fileName] = size
+        return fileSizes
 
-
-print(ADB().sizesInFolder("sdcard/DCIM/Anime"))
+    def singleFileSize(self, path:str, file: str) -> int:
+        """A backup function for self.sizesInFolder that will get the bytes of a file if self.sizesInFolder has an issue getting the bytes"""
+        command = self.headFolderSizes + [shlex.quote(path + "/" + file)]
+        result = subprocess.run(command, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise TypeError("File not found")
+        output = result.stdout.split()
+        try:
+            size = int(output[4]) # in bytes
+        except Exception:
+            size = 0 # accept defeat
+        return size
