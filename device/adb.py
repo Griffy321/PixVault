@@ -1,6 +1,8 @@
 import subprocess
 import shlex # shell lexicon
 
+from config import isMedia
+
 # learn how to use *args and **kwargs when making this if possible
 
 class ADB():
@@ -36,9 +38,9 @@ class ADB():
             return False
         return True
 
-    def sizesInFolder(self, path: str) -> dict[str, int]:
+    def backupDict(self, path: str) -> dict[str, int]:
         """Returns {filename: bytes} for everything in path"""
-        fileSizes = {}
+        toBackup = {}
         command = self.headFolderSizes + [shlex.quote(path)]
         result = subprocess.run(command, capture_output=True, text=True)
         if result.returncode != 0:
@@ -47,17 +49,22 @@ class ADB():
         outputItems = [output.split() for output in outputs]
         for data in outputItems:
             fileName = " ".join(data[7:])
+            if not isMedia(fileName):
+                print(f"'{fileName}' does not appear to be media, skipping.")
+                continue
             try:
                 size = int(data[4]) # in bytes
             except Exception:
                 print(f"Failed to get size for {fileName}, trying to fetch single file")
                 size = self.singleFileSize(path, fileName)
-            
-            fileSizes[fileName] = size
-        return fileSizes
+            toBackup[fileName] = size
+
+        if len(toBackup) == 0:
+            raise FileNotFoundError("No media files in this destination")
+        return toBackup
 
     def singleFileSize(self, path:str, file: str) -> int:
-        """A backup function for self.sizesInFolder that will get the bytes of a file if self.sizesInFolder has an issue getting the bytes"""
+        """A backup function for self.backupDict that will get the bytes of a file if self.backupDict has an issue getting the bytes"""
         command = self.headFolderSizes + [shlex.quote(path + "/" + file)]
         result = subprocess.run(command, capture_output=True, text=True)
         if result.returncode != 0:

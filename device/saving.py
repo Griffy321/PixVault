@@ -1,9 +1,8 @@
 import os
 import stat
 from pathlib import Path
-
+from config import isMedia
 from device.adb import ADB
-from device.navigation import FileNavigation
 
 
 class FileSaving:
@@ -18,24 +17,40 @@ class FileSaving:
     }
 
     def __init__(self):
-        self.deviceFiles = ADB()
+        ###### Device file objects ######
+        self.adb = ADB()
+        self.devicePath = ""
+        self.deviceFileContent: dict[str, int] = {}
+
+        ###### PC file objects ######
         self.pcFiles = ""
-        self.pcFolderContent: dict[str, list[tuple[Path, int]]] = {}
+        self.pcFolderContent: dict[str, set[int]] = {} # fileName : {bytes}, a set as one name can sit in two subfolders at different sizes
         self.toBackup = []
         self.failedBackup = []
         self.fileSizes = {}
         self.totalBytes = 0
         self.transferredBytes = 0
 
+    ################################################################################################
+    # Device functions
+    ################################################################################################
+    def loadDeviceFolderContent(self, remoteFilePath: str) -> None:
+        try:
+            self.deviceFileContent = self.adb.backupDict(remoteFilePath)
+            self.devicePath = remoteFilePath
+        except FileNotFoundError as e:
+            print(f"Error: {e}")
+
+    ################################################################################################
+    # PC functions
+    ################################################################################################
     def setDestination(self, folder: str) -> bool:
         """Points self.pcFiles at the folder the user picked, creating it if it isn't there yet.
         Turns down drive roots and anything too big to index"""
         target = Path(folder)
-
         if target.parent == target: 
             print(f"{folder} is a drive root, please pick a folder to back up into.")
             return False
-
         if not target.exists():
             try:
                 target.mkdir(parents=True, exist_ok=True)
@@ -44,16 +59,13 @@ class FileSaving:
                 return False
             self.pcFiles = str(target)
             return True
-
         if not target.is_dir():
             print(f"{folder} is a file, please pick a folder.")
             return False
-
         withinBudget, seen = self.withinScanBudget(target)
         if not withinBudget:
             print(f"{folder} holds over {self.MAX_SCAN_FILES:,} files, which is too many to check against. Please pick a dedicated backup folder.")
             return False
-
         print(f"Destination set to {target} ({seen:,} files already there)")
         self.pcFiles = str(target)
         return True
@@ -100,51 +112,58 @@ class FileSaving:
                 return False, seen
         return True, seen
 
-    def loadFolderContent(self) -> dict[str, list[tuple[Path, int]]]:
+    def loadPCFolderContent(self) -> dict[str, set[int]]:
         """Fills self.pcFolderContent with the media under self.pcFiles."""
         if not self.pcFiles:
             raise RuntimeError("No destination set, call setDestination() first.")
-
         self.pcFolderContent = {}
         for entry in self.walkFiles(Path(self.pcFiles)):
-            if not entry.name.lower().endswith(FileNavigation.MEDIA_TYPES):
+            if not isMedia(entry.name):
                 continue
             try:
                 size = entry.stat().st_size
             except OSError:
                 continue
-            self.pcFolderContent.setdefault(entry.name.lower(), []).append((Path(entry.path), size))
+            self.pcFolderContent.setdefault(entry.name.lower(), set()).add(size)
         return self.pcFolderContent
 
-    def localPathFor(self, fileName: str) -> Path:
-        """Returns where a device file will land inside self.pcFiles, keeping its
-        original name so IMG_420_69_67.jpg stays IMG_420_69_67.jpg."""
-        pass
 
-    # working out what actually needs copying
-    def alreadySaved(self, fileName: str) -> bool:
-        """True when this photo is already in self.pcFolderContent and can be skipped.
-        Re-running a backup is the normal case, so this is what keeps it quick."""
-        pass
+    ################################################################################################
+    # De-duping functions
+    ################################################################################################
+    def buildBackupList(self) -> list[str]:
+        """Fills self.toBackup with the files worth pulling from remoteFolder"""
+        if len(self.deviceFileContent) == 0:
+            raise ValueError("You currently have 0 device files selected to backup, please select a valid folder to backup")
+        if len(self.pcFolderContent) == 0:
+            raise ValueError("You currently have 0 PC files to compare against, please select a valid folder for comparison to be effective")
+        for file in self.deviceFileContent.items():
+            if file[0].lower() in self.pcFolderContent.keys():
+                print("match found")
+                matchingFiles = self.pcFolderContent.get(file[0].lower())
+                if self.sameFile(file, matchingFiles):
+                    continue
+                else:
+                    self.toBackup.append(file[0]) # if the name already exists but the matching file has a diffrent number of bytes then add it to the backup list, we might want to flag these files
+            else:
+                print("no match")
+                self.toBackup.append(file[0])
+        return self.toBackup
 
-    def sameFile(self, remotePath: str, localPath: Path) -> bool:
-        """Compares the device copy with the local one, most cheaply on byte size.
-        Separates a genuine duplicate from two different photos sharing a name."""
-        pass
+    def sameFile(self, deviceFile: dict, pcFiles: set[int]) -> bool:
+        """Compares the device copy with the local one on byte size, returns true if the file already exists."""
+        deviceFileBytes = deviceFile[1]
+        for fileBytes in pcFiles:
+            if int(deviceFileBytes) == int(fileBytes):
+                return True
+        return False
 
-    def resolveNameClash(self, localPath: Path) -> Path:
-        """Returns a free path when a different photo already holds that name,
-        e.g. IMG_0421 (1).jpg, so two devices cannot overwrite each other."""
-        pass
 
-    def buildBackupList(self, remoteFolder: str, fileNames: list[str]) -> list[str]:
-        """Fills self.toBackup with the files worth pulling from remoteFolder.
-        Gives the UI a total to count against before any copying starts."""
-        pass
-
-    # doing the copy
+    ################################################################################################
+    # Saving functions
+    ################################################################################################
     def saveFile(self, remotePath: str) -> Path | None:
-        """Pulls one photo to its local path via self.deviceFiles.adb.pull().
+        """Pulls one photo to its local path via self.deviceFileContent.adb.pull().
         Returns the path written, or None if it was skipped or failed."""
         pass
 
@@ -159,7 +178,9 @@ class FileSaving:
         from a yanked cable is not counted as backed up."""
         pass
 
-    # telling the user how far along the backup is
+    ################################################################################################
+    # UI functions
+    ################################################################################################
     def loadFileSizes(self, remoteFolder: str) -> dict[str, int]:
         """Fills self.fileSizes from one sizesInFolder() call on remoteFolder.
         Also what sameFile() compares against, so it is read once and shared."""
@@ -179,10 +200,3 @@ class FileSaving:
         Takes its numbers as arguments so it stays testable without a device attached."""
         pass
 
-if __name__ == "__main__": # run from the project root with: python -m device.saving
-    saver = FileSaving()
-    if saver.setDestination("C:/Android S23 Pics Backup"):
-        index = saver.loadFolderContent()
-        print(f"Indexed {len(index)} names, {sum(len(v) for v in index.values())} files")
-        for name, copies in list(index.items())[:5]:
-            print(f"  {name}: {copies}")
