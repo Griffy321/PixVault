@@ -5,8 +5,6 @@ import sys
 from PySide6.QtWidgets import QApplication
 from device import FileSaving
 
-from device import ADB # remove when done testing
-
 
 def main():
     # app = QApplication(sys.argv)
@@ -19,8 +17,8 @@ def main():
 
     backupFiles = FileSaving()
     print(backupFiles.loadDeviceFolderContent("sdcard/DCIM/Cool Stuff"))
-    backupFiles.setDestination("C:/Android S23 Pics Backup")
-    filesInDestination = backupFiles.loadPCFolderContent()
+    backupFiles.local.setDestination("C:/Android S23 Pics Backup")
+    filesInDestination = backupFiles.local.loadPCFolderContent()
     print(backupFiles.buildBackupList())
     # count = 0
     # while count < 3:

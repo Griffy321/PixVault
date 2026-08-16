@@ -1,1 +1,2 @@
 from app.navigation_view import NavigationScreen as NavigationScreen
+from app.saving_view import formatProgress as formatProgress
