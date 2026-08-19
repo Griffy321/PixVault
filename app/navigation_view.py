@@ -111,8 +111,9 @@ class NavigationScreen(QWidget):
 
     folderConfirmed = Signal(str)
 
-    def __init__(self):
+    def __init__(self, files: FileNavigation):
         super().__init__() # a way to refer to the super class without calling
+        self.files = files
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(20, 18, 20, 18)
         self.layout.setSpacing(12)
@@ -123,17 +124,15 @@ class NavigationScreen(QWidget):
 
     # builders - make a widget and add it to the layout (run once)
 
-    def buildScreen(self, files:FileNavigation) -> None:
+    def buildScreen(self) -> None:
         """Stores files as self.files, runs the builders in display order, then
         refreshes to draw the starting folder."""
-        self.files = files
         self.buildPathLabel()
         self.buildSearchFolder()
         self.buildFileList()
         self.buildFooter()
         self.buildBack()
         self.buildConfirm()
-        self.refresh()
 
     def buildPathLabel(self) -> None:
         """Creates self.pathLabel, the "you are here" line. refresh() updates it."""
