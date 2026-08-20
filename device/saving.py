@@ -7,14 +7,14 @@ class FileSaving:
 
     """Class to handle photo and video saving from one device to the other"""
 
-    def __init__(self):
+    def __init__(self, local = LocalFolder):
         ###### Device file objects ######
         self.adb = ADB()
         self.devicePath = ""
         self.deviceFileContent: dict[str, int] = {}
 
         ###### PC file objects ######
-        self.local = LocalFolder()
+        self.local = local
         self.toBackup = []
         self.failedBackup = []
         self.fileSizes = {}
@@ -24,10 +24,13 @@ class FileSaving:
     ################################################################################################
     # Device functions
     ################################################################################################
-    def loadDeviceFolderContent(self, remoteFilePath: str) -> None:
+    def loadDeviceFolderContent(self, deviceFilePath: str) -> None:
         try:
-            self.deviceFileContent = self.adb.backupDict(remoteFilePath)
-            self.devicePath = remoteFilePath
+            self.deviceFileContent = self.adb.backupDict(deviceFilePath)
+            if deviceFilePath.endswith("/"):
+                self.devicePath = deviceFilePath
+            else:
+                self.devicePath = deviceFilePath + "/"
         except FileNotFoundError as e:
             print(f"Error: {e}")
 
@@ -64,9 +67,16 @@ class FileSaving:
     # Saving functions
     ################################################################################################
     def saveFile(self, remotePath: str) -> Path | None:
-        """Pulls one photo to its local path via self.deviceFileContent.adb.pull().
-        Returns the path written, or None if it was skipped or failed."""
-        pass
+        """Pulls one photo to its local path. Returns the path written, or None if it was skipped or failed."""
+        if len(self.local.pcFiles) == 0:
+            raise FileNotFoundError("Please specify the folder where you want files to be saved to using local.setDestination()")
+        if len(self.devicePath) == 0:
+            raise FileNotFoundError("Please specify the device where you want to pull files from using loadDeviceFolderContent()")
+        deviceFile = self.devicePath + remotePath
+        result = self.adb.pullFiles(remotePath=deviceFile, localPath=self.local.pcFiles)
+        if result == True:
+            return self.local.pcFiles + remotePath
+        return "failed"
 
     def saveAll(self, onProgress=None) -> dict[str, str]:
         """Runs saveFile over self.toBackup and returns each file's outcome

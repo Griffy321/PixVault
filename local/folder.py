@@ -32,7 +32,10 @@ class LocalFolder:
             except OSError as e:
                 print(f"Failed to create folder {folder}: {e}")
                 return False
-            self.pcFiles = str(target)
+            if str(target).endswith("/"):
+                self.pcFiles = str(target)
+            else:
+                self.pcFiles = str(target) + "/"
             return True
         if not target.is_dir():
             print(f"{folder} is a file, please pick a folder.")
@@ -42,7 +45,10 @@ class LocalFolder:
             print(f"{folder} holds over {self.MAX_SCAN_FILES:,} files, which is too many to check against. Please pick a dedicated backup folder.")
             return False
         print(f"Destination set to {target} ({seen:,} files already there)")
-        self.pcFiles = str(target)
+        if str(target).endswith("/"):
+            self.pcFiles = str(target)
+        else:
+            self.pcFiles = str(target) + "/"
         return True
 
     def isLinkedFolder(self, entry: os.DirEntry) -> bool:
