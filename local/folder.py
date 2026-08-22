@@ -19,6 +19,19 @@ class LocalFolder:
         self.pcFiles = ""
         self.pcFolderContent: dict[str, set[int]] = {} # fileName : {bytes}, a set as one name can sit in two subfolders at different sizes
 
+    @property
+    def pcFiles(self):
+        return self._pcFiles
+
+    @pcFiles.setter
+    def pcFiles(self, value):
+        if str(value) == "":
+            self._pcFiles = value # do not use the setter logic if self.pcFiles has not been set yet 
+        elif str(value).endswith("/"):
+            self._pcFiles = value
+        else:
+            self._pcFiles = str(value) + "/"
+
     def setDestination(self, folder: str) -> bool:
         """Points self.pcFiles at the folder the user picked, creating it if it isn't there yet.
         Turns down drive roots and anything too big to index"""
@@ -32,10 +45,7 @@ class LocalFolder:
             except OSError as e:
                 print(f"Failed to create folder {folder}: {e}")
                 return False
-            if str(target).endswith("/"):
-                self.pcFiles = str(target)
-            else:
-                self.pcFiles = str(target) + "/"
+            self.pcFiles = str(target) # calls the setter automatically to check and set the value
             return True
         if not target.is_dir():
             print(f"{folder} is a file, please pick a folder.")
@@ -44,11 +54,8 @@ class LocalFolder:
         if not withinBudget:
             print(f"{folder} holds over {self.MAX_SCAN_FILES:,} files, which is too many to check against. Please pick a dedicated backup folder.")
             return False
+        self.pcFiles = str(target) # calls the setter automatically to check and set the value
         print(f"Destination set to {target} ({seen:,} files already there)")
-        if str(target).endswith("/"):
-            self.pcFiles = str(target)
-        else:
-            self.pcFiles = str(target) + "/"
         return True
 
     def isLinkedFolder(self, entry: os.DirEntry) -> bool:

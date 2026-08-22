@@ -21,16 +21,26 @@ class FileSaving:
         self.totalBytes = 0
         self.transferredBytes = 0
 
+    @property
+    def devicePath(self):
+        return self._devicePath
+
+    @devicePath.setter
+    def devicePath(self, value):
+        if str(value) == "":
+            self._devicePath = value
+        elif str(value).endswith("/"):
+            self._devicePath = value
+        else:
+            self._devicePath = value + "/"
+
     ################################################################################################
     # Device functions
     ################################################################################################
     def loadDeviceFolderContent(self, deviceFilePath: str) -> None:
         try:
             self.deviceFileContent = self.adb.backupDict(deviceFilePath)
-            if deviceFilePath.endswith("/"):
-                self.devicePath = deviceFilePath
-            else:
-                self.devicePath = deviceFilePath + "/"
+            self.devicePath = deviceFilePath
         except FileNotFoundError as e:
             print(f"Error: {e}")
 
@@ -66,7 +76,7 @@ class FileSaving:
     ################################################################################################
     # Saving functions
     ################################################################################################
-    def saveFile(self, remotePath: str) -> Path | None:
+    def saveFile(self, remotePath: str):
         """Pulls one photo to its local path. Returns the path written, or None if it was skipped or failed."""
         if len(self.local.pcFiles) == 0:
             raise FileNotFoundError("Please specify the folder where you want files to be saved to using local.setDestination()")
@@ -105,5 +115,3 @@ class FileSaving:
     def bytesRemaining(self) -> int:
         """Returns how many bytes of the backup are still to come."""
         pass
-
-
