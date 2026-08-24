@@ -17,7 +17,6 @@ class FileSaving:
         self.local = local
         self.toBackup = []
         self.failedBackup = []
-        self.fileSizes = {}
         self.totalBytes = 0
         self.transferredBytes = 0
 
@@ -72,7 +71,6 @@ class FileSaving:
                 return True
         return False
 
-
     ################################################################################################
     # Saving functions
     ################################################################################################
@@ -88,11 +86,16 @@ class FileSaving:
             return self.local.pcFiles + remotePath
         return "failed"
 
-    def saveAll(self, onProgress=None) -> dict[str, str]:
+    def saveAll(self):
         """Runs saveFile over self.toBackup and returns each file's outcome
         ("saved" / "skipped" / "failed") for the progress view to report.
         Calls onProgress(transferredBytes, totalBytes) after each file, if given."""
-        pass
+        for file in self.toBackup:
+            result = self.saveFile(file)
+            if result == "failed":
+                pass
+            self.transferredBytes += self.deviceFileContent.get(file)
+            yield file
 
     def verifySaved(self, remotePath: str, localPath: Path) -> bool:
         """Confirms the local copy is complete after a pull, so a half-written file
@@ -102,16 +105,12 @@ class FileSaving:
     ################################################################################################
     # UI functions
     ################################################################################################
-    def loadFileSizes(self, remoteFolder: str) -> dict[str, int]:
-        """Fills self.fileSizes from one sizesInFolder() call on remoteFolder.
-        Also what sameFile() compares against, so it is read once and shared."""
-        pass
-
     def totalToTransfer(self) -> int:
         """Sets self.totalBytes to the summed size of everything in self.toBackup.
         Run after buildBackupList, as it is the fixed "of 240 MB" half of the display."""
-        pass
+        self.totalBytes = sum(self.deviceFileContent.get(file, 0) for file in self.toBackup)
+        return self.totalBytes
 
     def bytesRemaining(self) -> int:
         """Returns how many bytes of the backup are still to come."""
-        pass
+        return self.totalBytes - self.transferredBytes
