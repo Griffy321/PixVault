@@ -74,6 +74,17 @@ class FileSaving:
     ################################################################################################
     # Saving functions
     ################################################################################################
+    def verifySaved(self, fileName: str) -> bool:
+        """Confirms the local copy is complete after a pull, so a half-written file
+        from a yanked cable is not counted as backed up."""
+        deviceFileSize = int(self.deviceFileContent.get(fileName))
+        if deviceFileSize is None:
+            raise ValueError("Unable to find the fileName in deviceFileContent.")
+        localFile = Path(self.local.pcFiles + fileName)
+        if localFile.exists() and int(localFile.stat().st_size) == deviceFileSize:
+            return True
+        return False
+    
     def saveFile(self, remotePath: str):
         """Pulls one photo to its local path. Returns the path written, or None if it was skipped or failed."""
         if len(self.local.pcFiles) == 0:
@@ -82,8 +93,8 @@ class FileSaving:
             raise FileNotFoundError("Please specify the device where you want to pull files from using loadDeviceFolderContent()")
         deviceFile = self.devicePath + remotePath
         result = self.adb.pullFiles(remotePath=deviceFile, localPath=self.local.pcFiles)
-        if result == True:
-            return self.local.pcFiles + remotePath
+        if result is True and self.verifySaved(remotePath) is True:
+            return str(self.local.pcFiles + remotePath).replace("\\", "/")
         return "failed"
 
     def saveAll(self):
@@ -93,14 +104,9 @@ class FileSaving:
         for file in self.toBackup:
             result = self.saveFile(file)
             if result == "failed":
-                pass
+                self.failedBackup.append(file)
             self.transferredBytes += self.deviceFileContent.get(file)
             yield file
-
-    def verifySaved(self, remotePath: str, localPath: Path) -> bool:
-        """Confirms the local copy is complete after a pull, so a half-written file
-        from a yanked cable is not counted as backed up."""
-        pass
 
     ################################################################################################
     # UI functions
