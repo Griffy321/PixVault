@@ -31,11 +31,13 @@ class MainWidow(QMainWindow):
         # the start 
         self.showNavigation()
 
+
     def showNavigation(self):
         """Show the Navigation screen to the user"""
         self.navigationScr.refresh()
         self.stack.setCurrentWidget(self.navigationScr)
         self.setWindowTitle("Navigation screen")
+
 
     def showSaving(self, path:str):
         """Hand the confirmed folder to the saving screen, then bring it forward"""

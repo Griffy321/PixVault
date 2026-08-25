@@ -51,7 +51,7 @@ Consistency with the surrounding file matters more than any rule here.
 | `app/`           | PySide6 screens and widgets                    |
 | `device/`        | ADB wrapper, filesystem navigation, saving     |
 | `visualisation/` | Image and video preview helpers                |
-| `logging/`       | Application logging                            |
+| `pvlogging/`     | Application logging                            |
 
 Anything touching the device should go through the `ADB` wrapper in `device/adb.py` rather than calling `subprocess`
 directly, so device access stays in one place.

@@ -16,13 +16,16 @@ VIDEO_TYPES = (
 
 MEDIA_TYPES = IMAGE_TYPES + RAW_TYPES + VIDEO_TYPES
 
+
 def isMedia(fileName: str) -> bool:
     """True for any photo or video PixVault will back up."""
     return fileName.lower().endswith(MEDIA_TYPES)
 
+
 def isImage(fileName: str) -> bool:
     """True for a still image, raw files included."""
     return fileName.lower().endswith(IMAGE_TYPES + RAW_TYPES)
+
 
 def isVideo(fileName: str) -> bool:
     """True for a video, so the viewer knows to open it with OpenVideo."""

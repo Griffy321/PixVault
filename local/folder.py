@@ -15,13 +15,16 @@ class LocalFolder:
         "program files", "program files (x86)", "appdata", "node_modules", ".git",
     }
 
+
     def __init__(self):
         self.pcFiles = ""
         self.pcFolderContent: dict[str, set[int]] = {} # fileName : {bytes}, a set as one name can sit in two subfolders at different sizes
 
+
     @property
     def pcFiles(self):
         return self._pcFiles
+
 
     @pcFiles.setter
     def pcFiles(self, value):
@@ -31,6 +34,7 @@ class LocalFolder:
             self._pcFiles = value
         else:
             self._pcFiles = str(value) + "/"
+
 
     def setDestination(self, folder: str) -> bool:
         """Points self.pcFiles at the folder the user picked, creating it if it isn't there yet.
@@ -58,6 +62,7 @@ class LocalFolder:
         print(f"Destination set to {target} ({seen:,} files already there)")
         return True
 
+
     def isLinkedFolder(self, entry: os.DirEntry) -> bool:
         """True for a symlinked or junctioned folder, which we never follow in case it
         points back up its own path."""
@@ -68,6 +73,7 @@ class LocalFolder:
         except OSError:
             return True
         return bool(attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT)
+
 
     def walkFiles(self, root: Path):
         """Yields an entry for every file under root, ignoring system folders, links
@@ -91,6 +97,7 @@ class LocalFolder:
             except OSError as e:
                 print(f"Skipping {folder}: {e}") # unreadable
 
+
     def withinScanBudget(self, root: Path) -> tuple[bool, int]:
         """Counts the files under root, giving up as soon as it passes MAX_SCAN_FILES."""
         seen = 0
@@ -99,6 +106,7 @@ class LocalFolder:
             if seen > self.MAX_SCAN_FILES:
                 return False, seen
         return True, seen
+
 
     def loadPCFolderContent(self) -> dict[str, set[int]]:
         """Fills self.pcFolderContent with the media under self.pcFiles."""

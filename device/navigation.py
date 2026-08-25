@@ -5,21 +5,25 @@ from device.adb import ADB
 class FileNavigation():
     """Handles filesystem navigation on an Android device using the ADB."""
 
+
     def __init__(self) -> None:
         # Path segments, joined on demand by currentPath().
         self.currentLocation: list[str] = ["sdcard"]
         self.adb: ADB = ADB()
         self.folderContence = []
 
+
     def goBack(self) -> None:
         """Steps up one folder, stopping at /sdcard."""
         if len(self.currentLocation) > 1:
             self.currentLocation.pop(-1)
-        print(self.currentLocation)
+        # print(self.currentLocation)
+
 
     def currentPath(self) -> str:
         """Returns the current location as a printable path string."""
         return "/".join(self.currentLocation)
+
 
     def listFolders(self, folderContents: list[str]) -> list[str]:
         """Returns just the subfolders at the current location."""
@@ -29,6 +33,7 @@ class FileNavigation():
                 folders.append(name)
         return folders
 
+
     def listMediaFiles(self, folderContents: list[str]) -> list[str]:
         """Returns just the images/videos at the current location."""
         files = []
@@ -37,11 +42,13 @@ class FileNavigation():
                 files.append(name)
         return files
 
+
     def validateMove(self, userInput: str, choices: list[str]) -> bool:
         if userInput in choices:
             return True
         else:
             return False
+
 
     def buildPath(self, step: str) -> list[str] | None:
         """

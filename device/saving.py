@@ -20,9 +20,11 @@ class FileSaving:
         self.totalBytes = 0
         self.transferredBytes = 0
 
+
     @property
     def devicePath(self):
         return self._devicePath
+
 
     @devicePath.setter
     def devicePath(self, value):
@@ -33,6 +35,7 @@ class FileSaving:
         else:
             self._devicePath = value + "/"
 
+
     ################################################################################################
     # Device functions
     ################################################################################################
@@ -42,6 +45,7 @@ class FileSaving:
             self.devicePath = deviceFilePath
         except FileNotFoundError as e:
             print(f"Error: {e}")
+
 
     ################################################################################################
     # De-duping functions
@@ -63,6 +67,7 @@ class FileSaving:
                 self.toBackup.append(file[0])
         return self.toBackup
 
+
     def sameFile(self, deviceFile: dict, pcFiles: set[int]) -> bool:
         """Compares the device copy with the local one on byte size, returns true if the file already exists."""
         deviceFileBytes = deviceFile[1]
@@ -70,6 +75,7 @@ class FileSaving:
             if int(deviceFileBytes) == int(fileBytes):
                 return True
         return False
+
 
     ################################################################################################
     # Saving functions
@@ -84,7 +90,8 @@ class FileSaving:
         if localFile.exists() and int(localFile.stat().st_size) == deviceFileSize:
             return True
         return False
-    
+
+
     def saveFile(self, remotePath: str):
         """Pulls one photo to its local path. Returns the path written, or None if it was skipped or failed."""
         if len(self.local.pcFiles) == 0:
@@ -97,6 +104,7 @@ class FileSaving:
             return str(self.local.pcFiles + remotePath).replace("\\", "/")
         return "failed"
 
+
     def saveAll(self):
         """Runs saveFile over self.toBackup and returns each file's outcome
         ("saved" / "skipped" / "failed") for the progress view to report.
@@ -108,6 +116,7 @@ class FileSaving:
             self.transferredBytes += self.deviceFileContent.get(file)
             yield file
 
+
     ################################################################################################
     # UI functions
     ################################################################################################
@@ -116,6 +125,7 @@ class FileSaving:
         Run after buildBackupList, as it is the fixed "of 240 MB" half of the display."""
         self.totalBytes = sum(self.deviceFileContent.get(file, 0) for file in self.toBackup)
         return self.totalBytes
+
 
     def bytesRemaining(self) -> int:
         """Returns how many bytes of the backup are still to come."""
