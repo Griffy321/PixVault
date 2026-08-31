@@ -13,16 +13,11 @@ Early development. Device browsing and the navigation UI are in place; saving an
 
 - Python 3.11 or newer
 - [PySide6](https://doc.qt.io/qtforpython-6/)
-- [Android Platform Tools](https://developer.android.com/tools/releases/platform-tools) (`adb` must be on your `PATH`)
 - An Android device with **USB debugging** enabled and the connection authorised
 
-Verify ADB can see your phone before starting the app:
-
-```bash
-adb devices
-```
-
-You should see exactly one device listed as `device` (not `unauthorized`).
+ADB itself ships with the app (see `vendor/platform-tools/`) — no separate Android Platform Tools install or
+`PATH` setup needed. Plug your phone in, enable USB debugging, and accept the "Allow USB debugging" prompt on the
+device when it appears; the app will detect it automatically.
 
 ## Installation
 
@@ -52,6 +47,7 @@ then select the files you want to pull across.
 | `device/`        | ADB wrapper, device filesystem navigation, and file saving          |
 | `visualisation/` | Image and video preview helpers                                    |
 | `logging/`       | Application logging                                                |
+| `vendor/`        | Bundled third-party binaries (adb, from Android Platform Tools)    |
 
 ## Supported media
 

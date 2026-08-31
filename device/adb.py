@@ -1,5 +1,8 @@
 import subprocess
 import shlex # shell lexicon
+import sys
+from pathlib import Path
+from shutil import which
 
 from config import isMedia
 from pvlogging import getLogger
@@ -8,21 +11,38 @@ log = getLogger(__name__)
 
 # learn how to use *args and **kwargs when making this if possible
 
+
+def resolveADBPath() -> str:
+    """Finds the adb executable to use, preferring the copy bundled with the app
+    over one the user may have installed themselves, falling back to PATH."""
+    if getattr(sys, "frozen", False):
+        # Running as a PyInstaller build: bundled files live under sys._MEIPASS.
+        bundled = Path(sys._MEIPASS) / "platform-tools" / "adb.exe"
+    else:
+        bundled = Path(__file__).resolve().parent.parent / "vendor" / "platform-tools" / "adb.exe"
+    if bundled.is_file():
+        return str(bundled)
+    log.warning("Bundled adb not found at %s, falling back to PATH", bundled)
+    onPath = which("adb")
+    if onPath:
+        return onPath
+    raise FileNotFoundError("Could not find adb, neither bundled nor on PATH")
+
+
 class ADB():
     """Wrapper around the adb command line so we can interact with the device easily."""
 
-    headFolder = ["adb", "shell", "ls"]
-    pullFrom = ["adb", "pull"]
-    headFolderSizes = ["adb", "shell", "ls", "-l"]
-
-
     def __init__(self):
-        pass
+        adbPath = resolveADBPath()
+        self.headFolder = [adbPath, "shell", "ls"]
+        self.pullFrom = [adbPath, "pull"]
+        self.headFolderSizes = [adbPath, "shell", "ls", "-l"]
+        self.adbPath = adbPath
 
 
     def isDeviceConnected(self):
         """Returns True if exactly one authorised device is visible to ADB."""
-        output = subprocess.run(["adb", "devices"], capture_output=True, text=True)
+        output = subprocess.run([self.adbPath, "devices"], capture_output=True, text=True)
         deviceID = output.stdout.replace("List of devices attached", "").replace("device", "").strip()
         if len(deviceID) >= 10: # check to make sure we've not picked up some random word
             log.info("Device connected: %s", deviceID)
