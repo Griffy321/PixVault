@@ -36,12 +36,22 @@ class SavingScreen(QWidget):
     # builders - make a widget and add it to the layout (run once)
     def buildScreen(self) -> None:
         """Runs the builders in display order."""
-        pass
+        self.buildCounter()
+        self.buildCard()
+        self.buildToast()
+        self.buildFooter()
+        self.buildSkipButton()
+        self.buildKeepButton()
 
 
     def buildCounter(self) -> None:
         """Creates self.counterLabel, the "12 kept, 38 to go" line."""
-        pass
+        if len(self.saving.deviceFileContent) == 0:
+            label = "Please select a file to backup."
+        elif len(self.saving.toBackup) < len(self.saving.deviceFileContent):
+            label = f"You have backed up {len(self.saving.toBackup)} out of {len(self.saving.deviceFileContent)} files."
+        self.filesRemaining = QLabel(label)
+        self.layout.addWidget(self.filesRemaining)
 
 
     def buildCard(self) -> None:
@@ -92,8 +102,15 @@ class SavingScreen(QWidget):
 
     # shared - the work both of the above lean on
     def startBackup(self, path: str) -> None:
-        """Loads the deduped files for path and draws the first card."""
-        pass
+        """Loads the deduped files for path and draws the first card. The PC
+        destination is expected to already be set on self.saving.local by the
+        Destination screen before this runs."""
+        self.saving.loadDeviceFolderContent(path)
+        self.saving.local.loadPCFolderContent()
+        self.saving.buildBackupList()
+        self.loadQueue()
+        self.updateCounter()
+        self.showCard()
 
 
     def loadQueue(self) -> None:

@@ -5,16 +5,16 @@ from local import LocalFolder
 
 class FileSaving:
 
-    """Class to handle photo and video saving from one device to the other"""
+    """Class to handle photo and video saving from one device to the other, this class mainly looks at the device."""
 
-    def __init__(self, local = LocalFolder):
+    def __init__(self, local: LocalFolder = None):
         ###### Device file objects ######
         self.adb = ADB()
         self.devicePath = ""
         self.deviceFileContent: dict[str, int] = {}
 
         ###### PC file objects ######
-        self.local = local
+        self.local = local if local is not None else LocalFolder()
         self.toBackup = []
         self.failedBackup = []
         self.totalBytes = 0
@@ -54,8 +54,6 @@ class FileSaving:
         """Fills self.toBackup with the files worth pulling from remoteFolder"""
         if len(self.deviceFileContent) == 0:
             raise ValueError("You currently have 0 device files selected to backup, please select a valid folder to backup")
-        if len(self.local.pcFolderContent) == 0:
-            raise ValueError("You currently have 0 PC files to compare against, please select a valid folder for comparison to be effective")
         for file in self.deviceFileContent.items():
             if file[0].lower() in self.local.pcFolderContent.keys():
                 matchingFiles = self.local.pcFolderContent.get(file[0].lower())

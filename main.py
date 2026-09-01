@@ -17,10 +17,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-## Call functions in this oreder when setting up saving
-# deviceFiles = FileSaving(LocalFolder())
-# deviceFiles.loadDeviceFolderContent("")
-# deviceFiles.local.setDestination("") # if this returns true then continue, otherwise pick another folder
-# deviceFiles.local.loadPCFolderContent() # call right away when above returns true
-# print(deviceFiles.saveFile("")) # for each file in the backup list or just use saveAll
+    
