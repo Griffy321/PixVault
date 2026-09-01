@@ -3,8 +3,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Signal
 from local import LocalFolder
-from app.navigation_view import STYLESHEET
-from config import BACKUP_DESTINATION
+from config import BACKUP_DESTINATION, STYLESHEET
 
 
 class DestinationScreen(QWidget):
