@@ -57,6 +57,7 @@ class BackupHistory:
                 create table if not exists saved_files (
                     id TEXT PRIMARY KEY,
                     file_name TEXT,
+                    file_bytes INTEGER,
                     created_at TEXT,
                     updated_at TEXT,
                     deleted_at TEXT
@@ -67,19 +68,19 @@ class BackupHistory:
             connection.close()
 
 
-    def recordFile(self, fileName):
+    def recordFile(self, fileName, fileBytes):
         """
-        Adds the file to the table along with created, updated and deleted at timestamps
+        Adds the file to the table along with its size and created, updated and deleted at timestamps
         """
         now = datetime.now(timezone.utc).isoformat()
-        row = (str(uuid.uuid4()), fileName, now, now, None)
+        row = (str(uuid.uuid4()), fileName, fileBytes, now, now, None)
 
         connection = sqlite3.connect(self.histDirectory() / "backed_up_files.db")
         try:
             connection.execute(
                 """
-                insert into saved_files (id, file_name, created_at, updated_at, deleted_at)
-                values (?, ?, ?, ?, ?)
+                insert into saved_files (id, file_name, file_bytes, created_at, updated_at, deleted_at)
+                values (?, ?, ?, ?, ?, ?)
                 """,
                 row,
             )

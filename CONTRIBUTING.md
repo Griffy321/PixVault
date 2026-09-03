@@ -12,12 +12,14 @@ git clone https://github.com/Griffy321/PixVault.git
 cd PixVault
 python -m venv .venv
 source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install PySide6
+pip install -r requirements.txt
 python main.py
 ```
 
-You will need `adb` on your `PATH` and an Android device with USB debugging enabled to exercise anything under
-`device/`.
+To exercise anything under `device/` you will need an Android device with USB debugging enabled. You do not need to
+install `adb` yourself on Windows — `resolveADBPath()` in `device/adb.py` prefers the copy bundled in
+`vendor/platform-tools/`, falling back to an `adb` on your `PATH` if the bundled one is missing (as it will be on
+Linux and macOS, where only the Windows `adb.exe` is vendored).
 
 ## Before you start
 
@@ -50,11 +52,21 @@ Consistency with the surrounding file matters more than any rule here.
 | `main.py`        | Entry point                                    |
 | `app/`           | PySide6 screens and widgets                    |
 | `device/`        | ADB wrapper, filesystem navigation, saving     |
+| `local/`         | Scanning the destination folder on this PC     |
+| `history/`       | Local record of backed up files, in SQLite     |
+| `config/`        | Media types, default destination, stylesheet   |
 | `visualisation/` | Image and video preview helpers                |
 | `pvlogging/`     | Application logging                            |
 
 Anything touching the device should go through the `ADB` wrapper in `device/adb.py` rather than calling `subprocess`
 directly, so device access stays in one place.
+
+Anything PixVault writes for itself — logs, the history database — belongs under the user's app data directory rather
+than the project folder, so a packaged build can still write to it. Follow the pattern in
+`pvlogging.logDirectory()` / `BackupHistory.histDirectory()`.
+
+SQL should always use `?` placeholders for values rather than f-string interpolation, so filenames containing quotes
+cannot break or inject into a query.
 
 ## Reporting bugs
 

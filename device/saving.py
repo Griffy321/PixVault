@@ -101,7 +101,7 @@ class FileSaving:
         deviceFile = self.devicePath + remotePath
         result = self.adb.pullFiles(remotePath=deviceFile, localPath=self.local.pcFiles)
         if result is True and self.verifySaved(remotePath) is True:
-            self.history.recordFile(remotePath)
+            self.history.recordFile(remotePath, self.deviceFileContent.get(remotePath))
             return str(self.local.pcFiles + remotePath).replace("\\", "/")
         return "failed"
 
