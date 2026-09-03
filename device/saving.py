@@ -1,5 +1,6 @@
 from pathlib import Path
 from device.adb import ADB
+from history import BackupHistory
 from local import LocalFolder
 
 
@@ -7,7 +8,7 @@ class FileSaving:
 
     """Class to handle photo and video saving from one device to the other, this class mainly looks at the device."""
 
-    def __init__(self, local: LocalFolder = None):
+    def __init__(self, local: LocalFolder = None, history: BackupHistory = None):
         ###### Device file objects ######
         self.adb = ADB()
         self.devicePath = ""
@@ -15,6 +16,7 @@ class FileSaving:
 
         ###### PC file objects ######
         self.local = local if local is not None else LocalFolder()
+        self.history = history if history is not None else BackupHistory()
         self.toBackup = []
         self.failedBackup = []
         self.totalBytes = 0
@@ -99,6 +101,7 @@ class FileSaving:
         deviceFile = self.devicePath + remotePath
         result = self.adb.pullFiles(remotePath=deviceFile, localPath=self.local.pcFiles)
         if result is True and self.verifySaved(remotePath) is True:
+            self.history.recordFile(remotePath)
             return str(self.local.pcFiles + remotePath).replace("\\", "/")
         return "failed"
 
