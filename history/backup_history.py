@@ -15,7 +15,7 @@ log = getLogger(__name__)
 class BackupHistory:
 
     def __init__(self):
-        pass
+        self.tableLocation = None
 
 
     def histDirectory(self):
@@ -34,6 +34,8 @@ class BackupHistory:
         Checks if the history file exists, creates it if not
         """
         filePath = Path(self.histDirectory() / "backed_up_files.db")
+        if self.tableLocation is None: 
+            self.tableLocation = filePath
         if filePath.exists():
             log.info("Found file path to save backed up files to: %s", str(filePath))
             return True

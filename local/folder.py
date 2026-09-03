@@ -18,7 +18,7 @@ class LocalFolder:
 
     def __init__(self):
         self.pcFiles = ""
-        self.pcFolderContent: dict[str, set[int]] = {} # fileName : {bytes}, a set as one name can sit in two subfolders at different sizes
+        self.pcFolderContent: dict[str, set[int]] = {} # fileName : (bytes, bytes), a set as one name can sit in two subfolders at different sizes
 
 
     @property

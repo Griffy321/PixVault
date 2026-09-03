@@ -2,11 +2,17 @@ from pathlib import Path
 from device.adb import ADB
 from history import BackupHistory
 from local import LocalFolder
+import sqlite3
+from pvlogging import getLogger
+
+log = getLogger(__name__)
 
 
 class FileSaving:
 
-    """Class to handle photo and video saving from one device to the other, this class mainly looks at the device."""
+    """
+    Class to handle photo and video saving from one device to the other, this class mainly looks at the device.
+    """
 
     def __init__(self, local: LocalFolder = None, history: BackupHistory = None):
         ###### Device file objects ######
@@ -53,12 +59,20 @@ class FileSaving:
     # De-duping functions
     ################################################################################################
     def buildBackupList(self) -> list[str]:
-        """Fills self.toBackup with the files worth pulling from remoteFolder"""
+        """
+        Fills self.toBackup with the files worth pulling from remoteFolder
+        """
         if len(self.deviceFileContent) == 0:
             raise ValueError("You currently have 0 device files selected to backup, please select a valid folder to backup")
+        historicBackups = self.pullBackupHistory()
+
+        knownFiles = self.local.pcFolderContent.keys() | historicBackups.keys()
+        
         for file in self.deviceFileContent.items():
-            if file[0].lower() in self.local.pcFolderContent.keys():
-                matchingFiles = self.local.pcFolderContent.get(file[0].lower())
+            if file[0].lower() in knownFiles:
+                matchingFilesLocal = self.local.pcFolderContent.get(file[0].lower())
+                matchingFilesHist = historicBackups.get(file[0].lower())
+                matchingFiles = (matchingFilesLocal or set()).union(matchingFilesHist or set())
                 if self.sameFile(file, matchingFiles):
                     continue
                 else:
@@ -69,7 +83,13 @@ class FileSaving:
 
 
     def sameFile(self, deviceFile: dict, pcFiles: set[int]) -> bool:
-        """Compares the device copy with the local one on byte size, returns true if the file already exists."""
+        """
+        Compares the device copy with the local one on byte size, returns true if the file already exists.
+
+        Params:
+        - deviceFile is a dict of fileName : bytes
+        - pcFiles is a set of ints that have the same name as the deviceFile - this function compares their bytes
+        """
         deviceFileBytes = deviceFile[1]
         for fileBytes in pcFiles:
             if int(deviceFileBytes) == int(fileBytes):
@@ -77,12 +97,40 @@ class FileSaving:
         return False
 
 
+    def pullBackupHistory(self):
+        """
+        Pulls all files that have ever been backed up amd returns a list of lists [[file_name, bytes], [file_name, bytes]] to be compared against.
+        """
+        content = {}
+        connection = sqlite3.connect(self.history.tableLocation)
+        sqlEngine = connection.cursor()
+        try:
+            backupData = sqlEngine.execute("""
+                select 
+                    file_name,
+                    file_bytes
+                from 
+                    saved_files
+                where 
+                    deleted_at is null
+                    and file_bytes is not null
+            """)
+            for fileName, fileBytes in backupData:
+                content.setdefault(fileName.lower(), set()).add(int(fileBytes))
+        except sqlite3.Error as e:
+            log.warning("Failed to select saved files from the db table error: %s", e)
+        finally:
+            connection.close()
+        return content
+
+
     ################################################################################################
     # Saving functions
     ################################################################################################
     def verifySaved(self, fileName: str) -> bool:
-        """Confirms the local copy is complete after a pull, so a half-written file
-        from a yanked cable is not counted as backed up."""
+        """
+        Confirms the local copy is complete after a pull, so a half-written file from a yanked cable is not counted as backed up.
+        """
         deviceFileSize = int(self.deviceFileContent.get(fileName))
         if deviceFileSize is None:
             raise ValueError("Unable to find the fileName in deviceFileContent.")
@@ -93,7 +141,9 @@ class FileSaving:
 
 
     def saveFile(self, remotePath: str):
-        """Pulls one photo to its local path. Returns the path written, or None if it was skipped or failed."""
+        """
+        Pulls one photo to its local path. Returns the path written, or None if it was skipped or failed.
+        """
         if len(self.local.pcFiles) == 0:
             raise FileNotFoundError("Please specify the folder where you want files to be saved to using local.setDestination()")
         if len(self.devicePath) == 0:
@@ -101,7 +151,7 @@ class FileSaving:
         deviceFile = self.devicePath + remotePath
         result = self.adb.pullFiles(remotePath=deviceFile, localPath=self.local.pcFiles)
         if result is True and self.verifySaved(remotePath) is True:
-            self.history.recordFile(remotePath, self.deviceFileContent.get(remotePath))
+            self.history.recordFile(remotePath.lower(), self.deviceFileContent.get(remotePath))
             return str(self.local.pcFiles + remotePath).replace("\\", "/")
         return "failed"
 
@@ -122,12 +172,16 @@ class FileSaving:
     # UI functions
     ################################################################################################
     def totalToTransfer(self) -> int:
-        """Sets self.totalBytes to the summed size of everything in self.toBackup.
-        Run after buildBackupList, as it is the fixed "of 240 MB" half of the display."""
+        """
+        Sets self.totalBytes to the summed size of everything in self.toBackup.
+        Run after buildBackupList, as it is the fixed "of 240 MB" half of the display.
+        """
         self.totalBytes = sum(self.deviceFileContent.get(file, 0) for file in self.toBackup)
         return self.totalBytes
 
 
     def bytesRemaining(self) -> int:
-        """Returns how many bytes of the backup are still to come."""
+        """
+        Returns how many bytes of the backup are still to come.
+        """
         return self.totalBytes - self.transferredBytes
