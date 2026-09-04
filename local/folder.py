@@ -6,7 +6,9 @@ from config import isMedia
 
 class LocalFolder:
 
-    """Class to handle scanning the folder on this PC that we back up into"""
+    """
+    Class to handle scanning the folder on this PC that we back up into
+    """
 
     MAX_SCAN_FILES = 50_000
     MAX_SCAN_DEPTH = 8
@@ -37,8 +39,10 @@ class LocalFolder:
 
 
     def setDestination(self, folder: str) -> bool:
-        """Points self.pcFiles at the folder the user picked, creating it if it isn't there yet.
-        Turns down drive roots and anything too big to index"""
+        """
+        Points self.pcFiles at the folder the user picked, creating it if it isn't there yet.
+        Turns down drive roots and anything too big to index
+        """
         target = Path(folder)
         if target.parent == target:
             print(f"{folder} is a drive root, please pick a folder to back up into.")
@@ -64,8 +68,9 @@ class LocalFolder:
 
 
     def isLinkedFolder(self, entry: os.DirEntry) -> bool:
-        """True for a symlinked or junctioned folder, which we never follow in case it
-        points back up its own path."""
+        """
+        True for a symlinked or junctioned folder, which we never follow in case it points back up its own path.
+        """
         if entry.is_symlink():
             return True
         try: # is_junction() is >= Python 3.12
@@ -76,8 +81,9 @@ class LocalFolder:
 
 
     def walkFiles(self, root: Path):
-        """Yields an entry for every file under root, ignoring system folders, links
-        and anything past MAX_SCAN_DEPTH."""
+        """
+        Yields an entry for every file under root, ignoring system folders, links and anything past MAX_SCAN_DEPTH.
+        """
         stack = [(str(root), 0)]
         while stack:
             folder, depth = stack.pop()
@@ -99,7 +105,9 @@ class LocalFolder:
 
 
     def withinScanBudget(self, root: Path) -> tuple[bool, int]:
-        """Counts the files under root, giving up as soon as it passes MAX_SCAN_FILES."""
+        """
+        Counts the files under root, giving up as soon as it passes MAX_SCAN_FILES.
+        """
         seen = 0
         for _ in self.walkFiles(root):
             seen += 1
@@ -109,7 +117,9 @@ class LocalFolder:
 
 
     def loadPCFolderContent(self) -> dict[str, set[int]]:
-        """Fills self.pcFolderContent with the media under self.pcFiles."""
+        """
+        Fills self.pcFolderContent with the media under self.pcFiles.
+        """
         if not self.pcFiles:
             raise RuntimeError("No destination set, call setDestination() first.")
         self.pcFolderContent = {}

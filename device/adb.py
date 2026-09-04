@@ -13,8 +13,9 @@ log = getLogger(__name__)
 
 
 def resolveADBPath() -> str:
-    """Finds the adb executable to use, preferring the copy bundled with the app
-    over one the user may have installed themselves, falling back to PATH."""
+    """
+    Finds the adb executable to use, preferring the copy bundled with the app over one the user may have installed themselves, falling back to PATH.
+    """
     if getattr(sys, "frozen", False):
         # Running as a PyInstaller build: bundled files live under sys._MEIPASS.
         bundled = Path(sys._MEIPASS) / "platform-tools" / "adb.exe"
@@ -30,7 +31,9 @@ def resolveADBPath() -> str:
 
 
 class ADB():
-    """Wrapper around the adb command line so we can interact with the device easily."""
+    """
+    Wrapper around the adb command line so we can interact with the device easily.
+    """
 
     def __init__(self):
         adbPath = resolveADBPath()
@@ -41,7 +44,9 @@ class ADB():
 
 
     def isDeviceConnected(self):
-        """Returns True if exactly one authorised device is visible to ADB."""
+        """
+        Returns True if exactly one authorised device is visible to ADB.
+        """
         output = subprocess.run([self.adbPath, "devices"], capture_output=True, text=True)
         deviceID = output.stdout.replace("List of devices attached", "").replace("device", "").strip()
         if len(deviceID) >= 10: # check to make sure we've not picked up some random word
@@ -52,7 +57,9 @@ class ADB():
 
 
     def fromHeadDir(self, path):
-        """Navigates down from the relitive top of the file directory to where the user specifies"""
+        """
+        Navigates down from the relitive top of the file directory to where the user specifies
+        """
         log.debug("Listing %s", path)
         result = subprocess.run(self.headFolder + [shlex.quote(path)], capture_output=True, text=True)
         if result.returncode != 0:
@@ -61,7 +68,9 @@ class ADB():
 
 
     def pullFiles(self, remotePath: str, localPath: str) -> bool:
-        """Copies one file off the device with `adb pull`, returning True on success and false on a fail"""
+        """
+        Copies one file off the device with `adb pull`, returning True on success and false on a fail
+        """
         command = self.pullFrom + [remotePath, localPath]
         log.debug("Pulling %s into %s", remotePath, localPath)
         result = subprocess.run(command, capture_output=True, text=True)
@@ -73,7 +82,9 @@ class ADB():
 
 
     def backupDict(self, path: str) -> dict[str, int]:
-        """Returns {filename: bytes} for everything in path"""
+        """
+        Returns {filename: bytes} for everything in path
+        """
         toBackup = {}
         command = self.headFolderSizes + [shlex.quote(path)]
         log.debug("Sizing up the contents of %s", path)
@@ -102,7 +113,9 @@ class ADB():
 
 
     def singleFileSize(self, path:str, file: str) -> int:
-        """A backup function for self.backupDict that will get the bytes of a file if self.backupDict has an issue getting the bytes"""
+        """
+        A backup function for self.backupDict that will get the bytes of a file if self.backupDict has an issue getting the bytes
+        """
         command = self.headFolderSizes + [shlex.quote(path + "/" + file)]
         result = subprocess.run(command, capture_output=True, text=True)
         if result.returncode != 0:

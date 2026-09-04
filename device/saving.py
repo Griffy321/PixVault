@@ -157,9 +157,10 @@ class FileSaving:
 
 
     def saveAll(self):
-        """Runs saveFile over self.toBackup and returns each file's outcome
-        ("saved" / "skipped" / "failed") for the progress view to report.
-        Calls onProgress(transferredBytes, totalBytes) after each file, if given."""
+        """
+        Runs saveFile over self.toBackup and returns each file's outcome ("saved" / "skipped" / "failed") for the progress view to report.
+        Calls onProgress(transferredBytes, totalBytes) after each file, if given.
+        """
         for file in self.toBackup:
             result = self.saveFile(file)
             if result == "failed":

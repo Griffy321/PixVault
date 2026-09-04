@@ -3,8 +3,9 @@ from device.adb import ADB
 
 
 class FileNavigation():
-    """Handles filesystem navigation on an Android device using the ADB."""
-
+    """
+    Handles filesystem navigation on an Android device using the ADB.
+    """
 
     def __init__(self) -> None:
         # Path segments, joined on demand by currentPath().
@@ -14,19 +15,25 @@ class FileNavigation():
 
 
     def goBack(self) -> None:
-        """Steps up one folder, stopping at /sdcard."""
+        """
+        Steps up one folder, stopping at /sdcard.
+        """
         if len(self.currentLocation) > 1:
             self.currentLocation.pop(-1)
         # print(self.currentLocation)
 
 
     def currentPath(self) -> str:
-        """Returns the current location as a printable path string."""
+        """
+        Returns the current location as a printable path string.
+        """
         return "/".join(self.currentLocation)
 
 
     def listFolders(self, folderContents: list[str]) -> list[str]:
-        """Returns just the subfolders at the current location."""
+        """
+        Returns just the subfolders at the current location.
+        """
         folders = []
         for name in folderContents:
             if not isMedia(name):
@@ -35,7 +42,9 @@ class FileNavigation():
 
 
     def listMediaFiles(self, folderContents: list[str]) -> list[str]:
-        """Returns just the images/videos at the current location."""
+        """
+        Returns just the images/videos at the current location.
+        """
         files = []
         for name in folderContents:
             if isMedia(name):
@@ -53,7 +62,7 @@ class FileNavigation():
     def buildPath(self, step: str) -> list[str] | None:
         """
         Constructs an absolute path string by appending a folder name to the base directory.
-        Returns the contence of the current folder  
+        Returns the contence of the current folder
         """
         deviceConnected = self.adb.isDeviceConnected()
         if deviceConnected[0]:

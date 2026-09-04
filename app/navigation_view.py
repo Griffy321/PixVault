@@ -33,8 +33,9 @@ class NavigationScreen(QWidget):
 
     # builders - make a widget and add it to the layout (run once)
     def buildScreen(self) -> None:
-        """Stores files as self.files, runs the builders in display order, then
-        refreshes to draw the starting folder."""
+        """
+        Stores files as self.files, runs the builders in display order, then refreshes to draw the starting folder.
+        """
         self.buildPathLabel()
         self.buildSearchFolder()
         self.buildFileList()
@@ -44,14 +45,18 @@ class NavigationScreen(QWidget):
 
 
     def buildPathLabel(self) -> None:
-        """Creates self.pathLabel, the "you are here" line. refresh() updates it."""
+        """
+        Creates self.pathLabel, the "you are here" line. refresh() updates it.
+        """
         self.pathLabel = QLabel(f"You're currently in : {self.files.currentPath()}")
         self.pathLabel.setObjectName("pathLabel")
         self.layout.addWidget(self.pathLabel)
 
 
     def buildSearchFolder(self):
-        """Creates the search bar and its button on one row, wired to onSearchClicked."""
+        """
+        Creates the search bar and its button on one row, wired to onSearchClicked.
+        """
         row = QHBoxLayout()
         row.setSpacing(8)
         self.searchBar = QLineEdit()
@@ -65,14 +70,18 @@ class NavigationScreen(QWidget):
 
 
     def buildFileList(self):
-        """Creates self.contentsList and wires double-clicks to onItemDoubleClicked."""
+        """
+        Creates self.contentsList and wires double-clicks to onItemDoubleClicked.
+        """
         self.contentsList = QListWidget()
         self.layout.addWidget(self.contentsList, stretch=1)
         self.contentsList.itemDoubleClicked.connect(lambda item: self.onItemDoubleClicked(item))
 
 
     def buildFooter(self) -> None:
-        """Creates self.footerRow, the row the two buttons sit in."""
+        """
+        Creates self.footerRow, the row the two buttons sit in.
+        """
         self.footerRow = QHBoxLayout()
         self.footerRow.setSpacing(8)
         self.footerRow.addStretch()
@@ -80,15 +89,18 @@ class NavigationScreen(QWidget):
 
 
     def buildBack(self):
-        """Creates the back button, wired to onBackClicked."""
+        """
+        Creates the back button, wired to onBackClicked.
+        """
         button = QPushButton("Go Back")
         self.footerRow.insertWidget(0, button)      # left of the stretch
         button.clicked.connect(lambda: self.onBackClicked())
 
 
     def buildConfirm(self) -> None:
-        """Creates the "Back Up This Folder" button. Connects to onConfirmClicked;
-        worth disabling while the folder holds no media."""
+        """
+        Creates the "Back Up This Folder" button. Connects to onConfirmClicked; worth disabling while the folder holds no media.
+        """
         self.confirmButton = QPushButton("Select Folder for Backup")
         self.confirmButton.setObjectName("confirmButton")
         self.footerRow.addWidget(self.confirmButton)   # right of the stretch
@@ -97,13 +109,17 @@ class NavigationScreen(QWidget):
 
     # handlers - respond to a click (run every time the user acts)
     def onBackClicked(self) -> None:
-        """Steps up one folder and redraws."""
+        """
+        Steps up one folder and redraws.
+        """
         self.files.goBack()
         self.refresh()
 
 
     def onSearchClicked(self, step):
-        """Jumps to the folder typed in the search bar and redraws."""
+        """
+        Jumps to the folder typed in the search bar and redraws.
+        """
         try:
             self.files.buildPath(step)
             self.refresh()
@@ -112,7 +128,9 @@ class NavigationScreen(QWidget):
 
 
     def onItemDoubleClicked(self, item: QListWidgetItem) -> None:
-        """Enters the double-clicked row if it is a folder. Media rows are ignored."""
+        """
+        Enters the double-clicked row if it is a folder. Media rows are ignored.
+        """
         try:
             folder = item.text().replace("/", "")
             if folder in self.files.listFolders(self.listing):
@@ -125,15 +143,17 @@ class NavigationScreen(QWidget):
 
 
     def onConfirmClicked(self) -> None:
-        """Emits folderConfirmed with the current path. Everything in that folder
-        gets backed up, so there is no per-file selection to gather."""
+        """
+        Emits folderConfirmed with the current path. Everything in that folder gets backed up, so there is no per-file selection to gather.
+        """
         self.folderConfirmed.emit(self.files.currentPath())
 
 
     # shared - the work both of the above lean on
     def refresh(self) -> None:
-        """Re-reads the current folder from the device and redraws the label and
-        list. Every action that changes location ends by calling this."""
+        """
+        Re-reads the current folder from the device and redraws the label and list. Every action that changes location ends by calling this.
+        """
         path = self.files.currentPath()
         listing = self.files.adb.fromHeadDir(path=path)
         if path == "sdcard" and len(listing) == 0: # check the device is still connected when in a place that should have files
@@ -145,8 +165,9 @@ class NavigationScreen(QWidget):
 
 
     def populateList(self, folderContents: list[str]) -> None:
-        """Refills the list from a raw ADB listing, folders first with a trailing
-        "/" so onItemDoubleClicked can tell them from media."""
+        """
+        Refills the list from a raw ADB listing, folders first with a trailing "/" so onItemDoubleClicked can tell them from media.
+        """
         self.listing = folderContents
         self.contentsList.clear()
         folders = self.files.listFolders(folderContents)
@@ -158,15 +179,16 @@ class NavigationScreen(QWidget):
 
 
     def mediaInCurrentFolder(self) -> list[str]:
-        """Returns the media files in the current folder, for the confirm button's
-        count and enabled state. Reads the listing refresh() already fetched rather
-        than asking the device again."""
+        """
+        Returns the media files in the current folder, for the confirm button's count and enabled state. Reads the listing refresh() already fetched rather than asking the device again.
+        """
         return self.files.listMediaFiles(self.listing)
 
 
     def updateConfirmButton(self) -> None:
-        """Enables the confirm button only when the folder holds media, and shows the
-        count so the user knows what they are committing to before they click."""
+        """
+        Enables the confirm button only when the folder holds media, and shows the count so the user knows what they are committing to before they click.
+        """
         count = len(self.mediaInCurrentFolder())
         self.confirmButton.setEnabled(count > 0)
         if count:
@@ -176,8 +198,9 @@ class NavigationScreen(QWidget):
 
 
     def showError(self, message: str) -> None:
-        """Shows message in a QMessageBox, so errors surface somewhere other than
-        the terminal."""
+        """
+        Shows message in a QMessageBox, so errors surface somewhere other than the terminal.
+        """
         error = QMessageBox(self)
         error.setWindowTitle("PixVault")
         error.setIcon(QMessageBox.Icon.Warning)

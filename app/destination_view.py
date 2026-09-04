@@ -8,9 +8,7 @@ from config import BACKUP_DESTINATION, STYLESHEET
 
 class DestinationScreen(QWidget):
     """
-    The screen for picking where on this PC backed up files get saved. Shows
-    a text field the user types a folder path into, and confirms it before
-    moving onto saving.
+    The screen for picking where on this PC backed up files get saved. Shows a text field the user types a folder path into, and confirms it before moving onto saving.
     """
 
     destinationConfirmed = Signal()
@@ -31,7 +29,9 @@ class DestinationScreen(QWidget):
 
     # builders - make a widget and add it to the layout (run once)
     def buildScreen(self) -> None:
-        """Runs the builders in display order."""
+        """
+        Runs the builders in display order.
+        """
         self.buildInstructions()
         self.buildPathInput()
         self.buildFooter()
@@ -40,15 +40,18 @@ class DestinationScreen(QWidget):
 
 
     def buildInstructions(self) -> None:
-        """Creates the label explaining what to type in the field below."""
+        """
+        Creates the label explaining what to type in the field below.
+        """
         label = QLabel("Where on this PC should backed up files be saved?")
         label.setObjectName("pathLabel")
         self.layout.addWidget(label)
 
 
     def buildPathInput(self) -> None:
-        """Creates self.pathInput, the folder path field, and a button that
-        fills it with the recommended default path."""
+        """
+        Creates self.pathInput, the folder path field, and a button that fills it with the recommended default path.
+        """
         row = QHBoxLayout()
         row.setSpacing(8)
         self.pathInput = QLineEdit()
@@ -63,7 +66,9 @@ class DestinationScreen(QWidget):
 
 
     def buildFooter(self) -> None:
-        """Creates self.footerRow, the row the two buttons sit in."""
+        """
+        Creates self.footerRow, the row the two buttons sit in.
+        """
         self.footerRow = QHBoxLayout()
         self.footerRow.setSpacing(8)
         self.footerRow.addStretch()
@@ -71,14 +76,18 @@ class DestinationScreen(QWidget):
 
 
     def buildBack(self) -> None:
-        """Creates the back button, wired to backRequested."""
+        """
+        Creates the back button, wired to backRequested.
+        """
         button = QPushButton("Go Back")
         self.footerRow.insertWidget(0, button)      # left of the stretch
         button.clicked.connect(self.backRequested.emit)
 
 
     def buildConfirm(self) -> None:
-        """Creates the confirm button, wired to onConfirmClicked."""
+        """
+        Creates the confirm button, wired to onConfirmClicked.
+        """
         self.confirmButton = QPushButton("Use This Folder")
         self.confirmButton.setObjectName("confirmButton")
         self.footerRow.addWidget(self.confirmButton)   # right of the stretch
@@ -87,14 +96,16 @@ class DestinationScreen(QWidget):
 
     # handlers - respond to a click (run every time the user acts)
     def onUseDefaultClicked(self) -> None:
-        """Fills the path field with the recommended default. Still requires
-        Confirm to actually apply it."""
+        """
+        Fills the path field with the recommended default. Still requires confirm to actually apply it.
+        """
         self.pathInput.setText(BACKUP_DESTINATION)
 
 
     def onConfirmClicked(self) -> None:
-        """Validates the typed path via LocalFolder.setDestination, then emits
-        destinationConfirmed, or shows an error if the folder can't be used."""
+        """
+        Validates the typed path via LocalFolder.setDestination, then emits destinationConfirmed, or shows an error if the folder can't be used.
+        """
         path = self.pathInput.text().strip()
         if not path:
             self.showError("Please type a folder path.")
@@ -110,8 +121,9 @@ class DestinationScreen(QWidget):
 
 
     def showError(self, message: str) -> None:
-        """Shows message in a QMessageBox, so errors surface somewhere other than
-        the terminal."""
+        """
+        Shows message in a QMessageBox, so errors surface somewhere other than the terminal.
+        """
         error = QMessageBox(self)
         error.setWindowTitle("PixVault")
         error.setIcon(QMessageBox.Icon.Warning)

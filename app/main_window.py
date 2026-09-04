@@ -5,7 +5,9 @@ from app.destination_view import DestinationScreen
 from PySide6.QtWidgets import QMainWindow, QStackedWidget
 
 class MainWidow(QMainWindow):
-    """Owns the window itself and the stack of screens. The only object that knows there is more than one screen, or what order they come in."""
+    """
+    Owns the window itself and the stack of screens. The only object that knows there is more than one screen, or what order they come in.
+    """
     def __init__(self, files, saver):
         # setting up the main window
         super().__init__()
@@ -40,21 +42,27 @@ class MainWidow(QMainWindow):
 
 
     def showNavigation(self):
-        """Show the Navigation screen to the user"""
+        """
+        Show the Navigation screen to the user
+        """
         self.navigationScr.refresh()
         self.stack.setCurrentWidget(self.navigationScr)
         self.setWindowTitle("Navigation screen")
 
 
     def onDeviceFolderChosen(self, path: str):
-        """Stores the confirmed device folder, then shows the Destination screen"""
+        """
+        Stores the confirmed device folder, then shows the Destination screen
+        """
         self.devicePath = path
         self.stack.setCurrentWidget(self.destinationScr)
         self.setWindowTitle("Destination screen")
 
 
     def showSaving(self):
-        """Start the backup for the stored device folder, then bring the saving screen forward"""
+        """
+        Start the backup for the stored device folder, then bring the saving screen forward
+        """
         self.savingScr.startBackup(self.devicePath)
         self.stack.setCurrentWidget(self.savingScr)
         self.setWindowTitle("Saving screen")
