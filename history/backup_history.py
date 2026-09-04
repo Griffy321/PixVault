@@ -40,19 +40,21 @@ class BackupHistory:
             log.info("Found file path to save backed up files to: %s", str(filePath))
             return True
         else:
-            log.warning("No file found to save historical backed up files to, creating one: %s", str(filePath))
+            log.info("No file found to save historical backed up files to, creating one: %s", str(filePath))
             try:
                 filePath.parent.mkdir(parents=True, exist_ok=True)
                 filePath.touch()
-            except Exception:
-                log.warning("Unable to create history file: %s", str(filePath))
+            except OSError as e:
+                log.exception("Unable to create history file %s, nothing will be recorded this run: %s", str(filePath), e)
                 return False
             log.info("File created to save historical backed up files to: %s", str(filePath))
             return True
 
 
     def setupTable(self):
-        connection = sqlite3.connect(self.histDirectory() / "backed_up_files.db")
+        tablePath = self.histDirectory() / "backed_up_files.db"
+        log.debug("Making sure the saved_files table exists in %s", str(tablePath))
+        connection = sqlite3.connect(tablePath)
         sqlEngine = connection.cursor()
         try:
             sqlEngine.execute("""
@@ -66,6 +68,10 @@ class BackupHistory:
                 )
                 """)
             connection.commit()
+        except sqlite3.Error as e:
+            log.error("Failed to set up the saved_files table in %s: %s", str(tablePath), e)
+            connection.rollback()
+            raise # the app cannot dedupe against a table that is not there, so let this one surface
         finally:
             connection.close()
 
@@ -87,8 +93,9 @@ class BackupHistory:
                 row,
             )
             connection.commit()
-        except sqlite3.Error:
-            log.warning("Failed to record %s file to history", fileName)
+            log.debug("Recorded %s (%s bytes) to history", fileName, fileBytes)
+        except sqlite3.Error as e:
+            log.warning("Failed to record %s file to history, it will be backed up again next run: %s", fileName, e)
             connection.rollback()
         finally:
             connection.close()
