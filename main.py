@@ -14,7 +14,7 @@ def main():
     backup.checkForHistFile()
     backup.setupTable()
     app = QApplication(sys.argv)
-    window = MainWidow(FileNavigation(), FileSaving())
+    window = MainWidow(FileNavigation(), FileSaving(history=backup))
     window.show()
     sys.exit(app.exec())
 

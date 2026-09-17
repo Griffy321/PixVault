@@ -16,6 +16,13 @@ QLabel#pathLabel {
     padding-bottom: 2px;
 }
 
+QLabel#card {
+    background-color: #ffffff;
+    border: 1px solid #d2d6dd;
+    border-radius: 8px;
+    color: #5a6270;
+}
+
 QLineEdit {
     background-color: #ffffff;
     border: 1px solid #d2d6dd;

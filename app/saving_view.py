@@ -1,10 +1,9 @@
-from pathlib import Path
-
-from PySide6.QtWidgets import QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QLabel
+from PySide6.QtWidgets import QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QSizePolicy
 from PySide6.QtCore import Signal, Qt, QTimer
-from PySide6.QtGui import QKeyEvent
+from PySide6.QtGui import QKeyEvent, QImage, QPixmap, QResizeEvent
 from device import FileSaving
 from config import STYLESHEET
+from visualisation import PreviewLoader
 
 class SavingScreen(QWidget):
     """
@@ -13,6 +12,9 @@ class SavingScreen(QWidget):
     One card at a time: right keeps the file for backup, left drops it.
     self.saving.toBackup is the deck to review and is left alone until
     commitToBackup() replaces it with what the user kept.
+
+    Previews come from self.loader, which pulls and decodes a few files ahead of the one on
+    screen so a swipe does not wait on adb.
     """
 
     reviewFinished = Signal()
@@ -24,6 +26,9 @@ class SavingScreen(QWidget):
         self.queue: list[str] = []      # deduped files still to be shown
         self.approved: list[str] = []   # the ones swiped right
         self.index = 0                  # position in self.queue
+        self.cardPixmap: QPixmap | None = None # the preview at full size, rescaled to fit the card
+        self.loader = PreviewLoader(saving.adb)
+        self.loader.ready.connect(self.onPreviewReady)
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(20, 18, 20, 18)
         self.layout.setSpacing(12)
@@ -54,13 +59,15 @@ class SavingScreen(QWidget):
         self.layout.addWidget(self.filesRemaining)
 
 
-    def buildCard(self) -> None: ################################################################################################
+    def buildCard(self) -> None:
         """
         Creates self.card, the panel the current file is previewed in.
         """
         self.card = QLabel()
         self.card.setObjectName("card")
         self.card.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.card.setMinimumSize(1, 1)
+        self.card.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored) # or the pixmap drives the layout and the window grows every resize
         self.layout.addWidget(self.card, stretch=1)
 
 
@@ -144,6 +151,7 @@ class SavingScreen(QWidget):
         """
         Runs once the deck is empty - commits the keepers and emits reviewFinished.
         """
+        self.loader.stop() # nothing left to preview, and saveAll wants adb to itself
         self.commitToBackup()
         self.updateCounter()
         self.showCard()
@@ -163,6 +171,7 @@ class SavingScreen(QWidget):
         self.saving.local.loadPCFolderContent()
         self.saving.buildBackupList()
         self.loadQueue()
+        self.loader.start(self.saving.devicePath, self.queue)
         self.updateCounter()
         self.showCard()
 
@@ -193,23 +202,71 @@ class SavingScreen(QWidget):
         if self.currentFile() is None:
             self.onReviewFinished()
         else:
+            self.loader.prefetch(self.index)
             self.updateCounter()
             self.showCard()
 
 
-    def showCard(self) -> None: ################################################################################################
+    def showCard(self) -> None:
         """
-        Draws currentFile() into self.card
+        Draws the preview for currentFile() into self.card, or says it is loading until the pull lands.
         """
         fileName = self.currentFile()
-        self.card.setText(fileName if fileName is not None else "All files reviewed.")
+        if fileName is None:
+            self.cardPixmap = None
+            self.card.setText("All files reviewed.")
+            return
+        image = self.loader.preview(fileName)
+        if image is None:
+            self.cardPixmap = None
+            self.card.setText(f"Loading {fileName}...")
+        else:
+            self.drawPreview(image, fileName)
 
 
-    def cachePreview(self, fileName: str) -> Path | None: ################################################################################################
+    def onPreviewReady(self, fileName: str, image: QImage) -> None:
         """
-        Pulls fileName to a local temp copy so it can be previewed.
+        Draws a preview that finished decoding after its card was already up, ignoring the ones the user has swiped past.
         """
-        pass
+        if fileName == self.currentFile():
+            self.drawPreview(image, fileName)
+
+
+    def drawPreview(self, image: QImage, fileName: str) -> None:
+        """
+        Puts image on the card, falling back to the placeholder when it came back empty.
+        """
+        if image.isNull():
+            self.cardPixmap = None
+            self.card.setText(self.placeholderText(fileName))
+            return
+        self.cardPixmap = QPixmap.fromImage(image)
+        self.scaleCard()
+
+
+    def scaleCard(self) -> None:
+        """
+        Redraws self.cardPixmap at the card's current size.
+        """
+        if self.cardPixmap is None:
+            return
+        self.card.setPixmap(self.cardPixmap.scaled(self.card.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+
+
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        """
+        Keeps the preview filling the card as the window changes size.
+        """
+        super().resizeEvent(event)
+        self.scaleCard()
+
+
+    def placeholderText(self, fileName: str) -> str:
+        """
+        What the card shows for a file cv2 cannot decode, HEIC and raw among them.
+        """
+        size = self.saving.deviceFileContent.get(fileName, 0)
+        return f"{fileName}\n{size / (1024 * 1024):.1f} MB\n\nNo preview available"
 
 
     def showToast(self, message: str) -> None:

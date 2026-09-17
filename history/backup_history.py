@@ -15,7 +15,7 @@ log = getLogger(__name__)
 class BackupHistory:
 
     def __init__(self):
-        self.tableLocation = None
+        self.tableLocation = self.histDirectory() / "backed_up_files.db" # set here, or anything that reads it before checkForHistFile() runs gets None
 
 
     def histDirectory(self):
