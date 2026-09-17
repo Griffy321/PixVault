@@ -1,9 +1,14 @@
-from PySide6.QtWidgets import QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QSizePolicy
-from PySide6.QtCore import Signal, Qt, QTimer
+from PySide6.QtWidgets import QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QSizePolicy, QStackedWidget
+from PySide6.QtCore import Signal, Qt, QTimer, QUrl
 from PySide6.QtGui import QKeyEvent, QImage, QPixmap, QResizeEvent
+from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
+from PySide6.QtMultimediaWidgets import QVideoWidget
 from device import FileSaving
-from config import STYLESHEET
+from config import STYLESHEET, isVideo
 from visualisation import PreviewLoader
+from pvlogging import getLogger
+
+log = getLogger(__name__)
 
 class SavingScreen(QWidget):
     """
@@ -14,7 +19,8 @@ class SavingScreen(QWidget):
     commitToBackup() replaces it with what the user kept.
 
     Previews come from self.loader, which pulls and decodes a few files ahead of the one on
-    screen so a swipe does not wait on adb.
+    screen so a swipe does not wait on adb. Stills are drawn on a label, clips play in a
+    video widget, and self.cardStack swaps between the two.
     """
 
     reviewFinished = Signal()
@@ -27,6 +33,7 @@ class SavingScreen(QWidget):
         self.approved: list[str] = []   # the ones swiped right
         self.index = 0                  # position in self.queue
         self.cardPixmap: QPixmap | None = None # the preview at full size, rescaled to fit the card
+        self.poster: QImage | None = None       # a clip's still, shown if Qt turns out not to play it
         self.loader = PreviewLoader(saving.adb)
         self.loader.ready.connect(self.onPreviewReady)
         self.layout = QVBoxLayout(self)
@@ -45,8 +52,11 @@ class SavingScreen(QWidget):
         """
         self.buildCounter()
         self.buildCard()
+        self.buildPlayer()
+        self.buildCaption()
         self.buildToast()
         self.buildFooter()
+        self.buildMuteButton()
         self.buildSkipButton()
         self.buildKeepButton()
 
@@ -61,14 +71,42 @@ class SavingScreen(QWidget):
 
     def buildCard(self) -> None:
         """
-        Creates self.card, the panel the current file is previewed in.
+        Creates self.cardStack, the panel the current file is previewed in - a label for stills and placeholders, a video widget for clips.
         """
+        self.cardStack = QStackedWidget()
         self.card = QLabel()
         self.card.setObjectName("card")
         self.card.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.card.setMinimumSize(1, 1)
         self.card.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored) # or the pixmap drives the layout and the window grows every resize
-        self.layout.addWidget(self.card, stretch=1)
+        self.videoCard = QVideoWidget()
+        self.videoCard.setMinimumSize(1, 1)
+        self.cardStack.addWidget(self.card)
+        self.cardStack.addWidget(self.videoCard)
+        self.layout.addWidget(self.cardStack, stretch=1)
+
+
+    def buildPlayer(self) -> None:
+        """
+        Creates the player the video card draws into. Starts muted, a whole deck autoplaying sound is too much.
+        """
+        self.audio = QAudioOutput()
+        self.audio.setMuted(True)
+        self.player = QMediaPlayer()
+        self.player.setAudioOutput(self.audio)
+        self.player.setVideoOutput(self.videoCard)
+        self.player.setLoops(QMediaPlayer.Loops.Infinite)
+        self.player.errorOccurred.connect(self.onPlayerError)
+
+
+    def buildCaption(self) -> None:
+        """
+        Creates self.caption, the line under the card naming the file on it.
+        """
+        self.caption = QLabel()
+        self.caption.setObjectName("pathLabel")
+        self.caption.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.layout.addWidget(self.caption)
 
 
     def buildToast(self) -> None:
@@ -89,6 +127,17 @@ class SavingScreen(QWidget):
         self.footerRow = QHBoxLayout()
         self.footerRow.setSpacing(8)
         self.layout.addLayout(self.footerRow)
+
+
+    def buildMuteButton(self) -> None:
+        """
+        Creates the audio toggle, only enabled while a clip is on the card.
+        """
+        self.muteButton = QPushButton("Unmute")
+        self.muteButton.setEnabled(False)
+        self.footerRow.addWidget(self.muteButton)
+        self.footerRow.addStretch()
+        self.muteButton.clicked.connect(self.onMuteClicked)
 
 
     def buildSkipButton(self) -> None:
@@ -135,6 +184,26 @@ class SavingScreen(QWidget):
         self.advance()
 
 
+    def onMuteClicked(self) -> None:
+        """
+        Flips the sound on or off. The choice sticks for the rest of the deck.
+        """
+        self.audio.setMuted(not self.audio.isMuted())
+        self.muteButton.setText("Unmute" if self.audio.isMuted() else "Mute")
+
+
+    def onPlayerError(self, error, message: str) -> None:
+        """
+        Falls back to the cv2 poster frame when Qt will not decode a clip, HEVC on a machine without the Windows extension being the usual cause.
+        """
+        fileName = self.currentFile()
+        log.warning("Could not play %s (%s): %s, falling back to a still", fileName, error, message)
+        if self.poster is not None and not self.poster.isNull():
+            self.showStill(self.poster)
+        elif fileName is not None:
+            self.showStill(None, self.placeholderText(fileName))
+
+
     def keyPressEvent(self, event: QKeyEvent) -> None:
         """
         Maps the left and right arrow keys onto the two buttons.
@@ -151,7 +220,8 @@ class SavingScreen(QWidget):
         """
         Runs once the deck is empty - commits the keepers and emits reviewFinished.
         """
-        self.loader.stop() # nothing left to preview, and saveAll wants adb to itself
+        self.releasePlayer() # let go of the file before the loader deletes it
+        self.loader.stop()   # nothing left to preview, and saveAll wants adb to itself
         self.commitToBackup()
         self.updateCounter()
         self.showCard()
@@ -171,7 +241,7 @@ class SavingScreen(QWidget):
         self.saving.local.loadPCFolderContent()
         self.saving.buildBackupList()
         self.loadQueue()
-        self.loader.start(self.saving.devicePath, self.queue)
+        self.loader.start(self.saving.devicePath, self.queue, self.saving.deviceFileContent)
         self.updateCounter()
         self.showCard()
 
@@ -199,6 +269,7 @@ class SavingScreen(QWidget):
         Steps to the next file and redraws, or finishes if there is none.
         """
         self.index += 1
+        self.releasePlayer() # let go before prefetch evicts the file we were playing
         if self.currentFile() is None:
             self.onReviewFinished()
         else:
@@ -209,39 +280,77 @@ class SavingScreen(QWidget):
 
     def showCard(self) -> None:
         """
-        Draws the preview for currentFile() into self.card, or says it is loading until the pull lands.
+        Draws the preview for currentFile(), or says it is loading until the pull lands.
         """
         fileName = self.currentFile()
         if fileName is None:
-            self.cardPixmap = None
-            self.card.setText("All files reviewed.")
+            self.caption.clear()
+            self.showStill(None, "All files reviewed.")
             return
-        image = self.loader.preview(fileName)
-        if image is None:
-            self.cardPixmap = None
-            self.card.setText(f"Loading {fileName}...")
+        preview = self.loader.preview(fileName)
+        if preview is None:
+            self.caption.setText(fileName)
+            self.showStill(None, f"Loading {fileName}...")
         else:
-            self.drawPreview(image, fileName)
+            self.drawPreview(fileName, preview)
 
 
-    def onPreviewReady(self, fileName: str, image: QImage) -> None:
+    def onPreviewReady(self, fileName: str) -> None:
         """
-        Draws a preview that finished decoding after its card was already up, ignoring the ones the user has swiped past.
+        Draws a preview that landed after its card was already up, ignoring the ones the user has swiped past.
         """
         if fileName == self.currentFile():
-            self.drawPreview(image, fileName)
+            self.drawPreview(fileName, self.loader.preview(fileName))
 
 
-    def drawPreview(self, image: QImage, fileName: str) -> None:
+    def drawPreview(self, fileName: str, preview: tuple[QImage, str, float]) -> None:
         """
-        Puts image on the card, falling back to the placeholder when it came back empty.
+        Puts the preview on the card - a clip plays, a still is drawn, and anything we could not read falls back to the placeholder.
         """
-        if image.isNull():
+        image, videoPath, seconds = preview
+        self.poster = image
+        self.caption.setText(self.captionText(fileName, seconds))
+        if videoPath:
+            self.playVideo(videoPath)
+        elif not image.isNull():
+            self.showStill(image)
+        else:
+            self.showStill(None, self.placeholderText(fileName))
+
+
+    def playVideo(self, videoPath: str) -> None:
+        """
+        Points the player at the pulled copy and loops it while the card is up.
+        """
+        self.cardStack.setCurrentWidget(self.videoCard)
+        self.muteButton.setEnabled(True)
+        self.player.setSource(QUrl.fromLocalFile(videoPath))
+        self.player.play()
+
+
+    def showStill(self, image: QImage | None, message: str = "") -> None:
+        """
+        Brings the label forward with either a picture or a line of text on it.
+        """
+        self.releasePlayer()
+        self.cardStack.setCurrentWidget(self.card)
+        if image is None or image.isNull():
             self.cardPixmap = None
-            self.card.setText(self.placeholderText(fileName))
+            self.card.setText(message)
+        else:
+            self.cardPixmap = QPixmap.fromImage(image)
+            self.scaleCard()
+
+
+    def releasePlayer(self) -> None:
+        """
+        Stops playback and lets go of the file, or Windows will not let the loader delete it.
+        """
+        self.muteButton.setEnabled(False)
+        if self.player.source().isEmpty():
             return
-        self.cardPixmap = QPixmap.fromImage(image)
-        self.scaleCard()
+        self.player.stop()
+        self.player.setSource(QUrl())
 
 
     def scaleCard(self) -> None:
@@ -263,10 +372,23 @@ class SavingScreen(QWidget):
 
     def placeholderText(self, fileName: str) -> str:
         """
-        What the card shows for a file cv2 cannot decode, HEIC and raw among them.
+        What the card shows for a file we cannot preview - a clip over the size cap, or a format nothing will decode.
         """
         size = self.saving.deviceFileContent.get(fileName, 0)
-        return f"{fileName}\n{size / (1024 * 1024):.1f} MB\n\nNo preview available"
+        if isVideo(fileName) and size > PreviewLoader.MAX_VIDEO_BYTES:
+            reason = "Too large to preview"
+        else:
+            reason = "No preview available"
+        return f"{fileName}\n{size / (1024 * 1024):.1f} MB\n\n{reason}"
+
+
+    def captionText(self, fileName: str, seconds: float) -> str:
+        """
+        The line under the card - the file name, plus a clip's length once we know it.
+        """
+        if seconds > 0:
+            return f"{fileName}   {int(seconds) // 60}:{int(seconds) % 60:02d}"
+        return fileName
 
 
     def showToast(self, message: str) -> None:

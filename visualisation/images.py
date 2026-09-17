@@ -28,6 +28,13 @@ class OpenImage:
         image = self.decode(path)
         if image is None:
             return None
+        return self.fromFrame(image)
+
+
+    def fromFrame(self, image) -> QImage:
+        """
+        Turns a BGR frame from cv2 into a QImage the card can draw, video frames included.
+        """
         image = self.shrink(image)
         image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
         height, width, channels = image.shape
