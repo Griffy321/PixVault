@@ -23,6 +23,13 @@ class FileNavigation():
         # print(self.currentLocation)
 
 
+    def goHome(self) -> None:
+        """
+        Jumps back to /sdcard, for starting a new backup from the top.
+        """
+        self.currentLocation = ["sdcard"]
+
+
     def currentPath(self) -> str:
         """
         Returns the current location as a printable path string.

@@ -16,6 +16,11 @@ QLabel#pathLabel {
     padding-bottom: 2px;
 }
 
+QLabel#title {
+    font-size: 20px;
+    font-weight: 600;
+}
+
 QLabel#card {
     background-color: #ffffff;
     border: 1px solid #d2d6dd;

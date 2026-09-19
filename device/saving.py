@@ -64,6 +64,7 @@ class FileSaving:
         """
         if len(self.deviceFileContent) == 0:
             raise ValueError("You currently have 0 device files selected to backup, please select a valid folder to backup")
+        self.toBackup = [] # or a second backup in the same run stacks on top of the first
         historicBackups = self.pullBackupHistory()
 
         knownFiles = self.local.pcFolderContent.keys() | historicBackups.keys()
@@ -131,11 +132,11 @@ class FileSaving:
         """
         Confirms the local copy is complete after a pull, so a half-written file from a yanked cable is not counted as backed up.
         """
-        deviceFileSize = int(self.deviceFileContent.get(fileName))
+        deviceFileSize = self.deviceFileContent.get(fileName)
         if deviceFileSize is None:
             raise ValueError("Unable to find the fileName in deviceFileContent.")
         localFile = Path(self.local.pcFiles + fileName)
-        if localFile.exists() and int(localFile.stat().st_size) == deviceFileSize:
+        if localFile.exists() and int(localFile.stat().st_size) == int(deviceFileSize):
             return True
         return False
 
@@ -156,17 +157,26 @@ class FileSaving:
         return "failed"
 
 
-    def saveAll(self):
+    def saveAll(self, onStart=None):
         """
-        Runs saveFile over self.toBackup and returns each file's outcome ("saved" / "skipped" / "failed") for the progress view to report.
-        Calls onProgress(transferredBytes, totalBytes) after each file, if given.
+        Runs saveFile over self.toBackup, yielding (file, saved) after each one for the progress view to report.
+        Calls onStart(file) before each pull, if given. Only saved files count towards self.transferredBytes.
         """
+        self.failedBackup = []
+        self.transferredBytes = 0
         for file in self.toBackup:
-            result = self.saveFile(file)
-            if result == "failed":
+            if onStart is not None:
+                onStart(file)
+            try:
+                saved = self.saveFile(file) != "failed"
+            except Exception as e: # one bad file should not end the whole backup
+                log.exception("Failed to save %s: %s", file, e)
+                saved = False
+            if saved:
+                self.transferredBytes += self.deviceFileContent.get(file, 0)
+            else:
                 self.failedBackup.append(file)
-            self.transferredBytes += self.deviceFileContent.get(file)
-            yield file
+            yield file, saved
 
 
     ################################################################################################
