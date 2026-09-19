@@ -9,6 +9,8 @@ from pvlogging import getLogger
 
 log = getLogger(__name__)
 
+NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0 # or the windowed .exe flashes a console for every adb call
+
 # learn how to use *args and **kwargs when making this if possible
 
 
@@ -47,7 +49,7 @@ class ADB():
         """
         Returns True if exactly one authorised device is visible to ADB.
         """
-        output = subprocess.run([self.adbPath, "devices"], capture_output=True, text=True)
+        output = subprocess.run([self.adbPath, "devices"], capture_output=True, text=True, creationflags=NO_WINDOW)
         deviceID = output.stdout.replace("List of devices attached", "").replace("device", "").strip()
         if len(deviceID) >= 10: # check to make sure we've not picked up some random word
             log.info("Device connected: %s", deviceID)
@@ -56,12 +58,23 @@ class ADB():
         return [False, deviceID]
 
 
+    def killServer(self) -> None:
+        """
+        Stops the adb server started behind the scenes, which otherwise outlives the app and keeps adb.exe locked.
+        """
+        try:
+            subprocess.run([self.adbPath, "kill-server"], capture_output=True, text=True, creationflags=NO_WINDOW, timeout=10)
+            log.info("Stopped the adb server")
+        except (OSError, subprocess.TimeoutExpired) as e:
+            log.warning("Could not stop the adb server: %s", e)
+
+
     def fromHeadDir(self, path):
         """
         Navigates down from the relitive top of the file directory to where the user specifies
         """
         log.debug("Listing %s", path)
-        result = subprocess.run(self.headFolder + [shlex.quote(path)], capture_output=True, text=True)
+        result = subprocess.run(self.headFolder + [shlex.quote(path)], capture_output=True, text=True, creationflags=NO_WINDOW)
         if result.returncode != 0:
             log.error("Could not list %s, error code %s: %s", path, result.returncode, result.stderr.strip())
         return result.stdout.strip().splitlines()
@@ -73,7 +86,7 @@ class ADB():
         """
         command = self.pullFrom + [remotePath, localPath]
         log.debug("Pulling %s into %s", remotePath, localPath)
-        result = subprocess.run(command, capture_output=True, text=True)
+        result = subprocess.run(command, capture_output=True, text=True, creationflags=NO_WINDOW)
         if result.returncode != 0:
             log.error("Failed to pull %s into %s, error code %s: %s", remotePath, localPath, result.returncode, result.stderr.strip())
             return False
@@ -88,7 +101,7 @@ class ADB():
         toBackup = {}
         command = self.headFolderSizes + [shlex.quote(path)]
         log.debug("Sizing up the contents of %s", path)
-        result = subprocess.run(command, capture_output=True, text=True)
+        result = subprocess.run(command, capture_output=True, text=True, creationflags=NO_WINDOW)
         if result.returncode != 0:
             log.error("Could not read %s, error code %s: %s", path, result.returncode, result.stderr.strip())
             raise TypeError("File path not found")
@@ -117,7 +130,7 @@ class ADB():
         A backup function for self.backupDict that will get the bytes of a file if self.backupDict has an issue getting the bytes
         """
         command = self.headFolderSizes + [shlex.quote(path + "/" + file)]
-        result = subprocess.run(command, capture_output=True, text=True)
+        result = subprocess.run(command, capture_output=True, text=True, creationflags=NO_WINDOW)
         if result.returncode != 0:
             log.error("Could not read %s/%s, error code %s: %s", path, file, result.returncode, result.stderr.strip())
             raise TypeError("File not found")

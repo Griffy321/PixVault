@@ -14,7 +14,9 @@ def main():
     backup.checkForHistFile()
     backup.setupTable()
     app = QApplication(sys.argv)
-    window = MainWidow(FileNavigation(), FileSaving(history=backup))
+    saver = FileSaving(history=backup)
+    app.aboutToQuit.connect(saver.adb.killServer)
+    window = MainWidow(FileNavigation(), saver)
     window.show()
     sys.exit(app.exec())
 

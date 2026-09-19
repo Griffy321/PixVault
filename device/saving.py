@@ -128,14 +128,13 @@ class FileSaving:
     ################################################################################################
     # Saving functions
     ################################################################################################
-    def verifySaved(self, fileName: str) -> bool:
+    def verifySaved(self, fileName: str, localFile: Path) -> bool:
         """
         Confirms the local copy is complete after a pull, so a half-written file from a yanked cable is not counted as backed up.
         """
         deviceFileSize = self.deviceFileContent.get(fileName)
         if deviceFileSize is None:
             raise ValueError("Unable to find the fileName in deviceFileContent.")
-        localFile = Path(self.local.pcFiles + fileName)
         if localFile.exists() and int(localFile.stat().st_size) == int(deviceFileSize):
             return True
         return False
@@ -150,11 +149,26 @@ class FileSaving:
         if len(self.devicePath) == 0:
             raise FileNotFoundError("Please specify the device where you want to pull files from using loadDeviceFolderContent()")
         deviceFile = self.devicePath + remotePath
-        result = self.adb.pullFiles(remotePath=deviceFile, localPath=self.local.pcFiles)
-        if result is True and self.verifySaved(remotePath) is True:
-            self.history.recordFile(remotePath.lower(), self.deviceFileContent.get(remotePath))
-            return str(self.local.pcFiles + remotePath).replace("\\", "/")
+        localFile = self.freeLocalPath(remotePath)
+        result = self.adb.pullFiles(remotePath=deviceFile, localPath=str(localFile))
+        if result is True and self.verifySaved(remotePath, localFile) is True:
+            self.history.recordFile(remotePath.lower(), self.deviceFileContent.get(remotePath)) # the device name, as that is what the next backup checks against
+            return str(localFile).replace("\\", "/")
         return "failed"
+
+
+    def freeLocalPath(self, fileName: str) -> Path:
+        """
+        Where fileName should be saved. If the name is already taken it gets numbered, e.g. "IMG_0001 (1).jpg", so a different photo is never written over.
+        """
+        localFile = Path(self.local.pcFiles) / fileName
+        count = 1
+        while localFile.exists():
+            localFile = Path(self.local.pcFiles) / f"{Path(fileName).stem} ({count}){Path(fileName).suffix}"
+            count += 1
+        if localFile.name != fileName:
+            log.info("%s is already taken by a different file, saving it as %s", fileName, localFile.name)
+        return localFile
 
 
     def saveAll(self, onStart=None):

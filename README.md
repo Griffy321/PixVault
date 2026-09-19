@@ -1,76 +1,88 @@
 # PixVault
 
-The application within this repository allows a user to backup photos from their phone onto their computer using a simple user friendly UI.
+The application within this repository allows a user to backup photos and videos from their phone onto their computer using a simple user friendly UI.
 
-PixVault talks to an Android device over [ADB](https://developer.android.com/tools/adb), lets you browse the device's
-filesystem from a desktop window, preview the media it finds, and copy what you want onto your machine.
+It talks to the phone over ADB, which comes bundled with the app, so there's nothing else to install.
 
 ## Status
 
-Early development. Device browsing, the navigation UI, media preview, choosing a backup destination, and saving with
-de-duplication against the destination folder are in place. Every saved file is now recorded in a local history
-database; using that history to skip files you have already backed up and since moved elsewhere is still to come.
+Working on Windows, not tested on Mac or Linux yet. You can browse your phone, preview photos and videos, pick which ones to keep and back them up. Anything you've backed up before gets skipped, even if you've since moved it off your PC (e.g. onto an external drive).
 
-## Requirements
+## Download (Windows)
 
-- Python 3.11 or newer
-- [PySide6](https://doc.qt.io/qtforpython-6/) and [OpenCV](https://pypi.org/project/opencv-python/) (both in `requirements.txt`)
-- An Android device with **USB debugging** enabled and the connection authorised
+1. Download the zip from the [latest release](https://github.com/Griffy321/PixVault/releases/latest).
+2. Unzip it and run `PixVault.exe` from the `PixVault` folder. No install or Python needed.
+3. If Windows says "Windows protected your PC", click "More info" then "Run anyway". It shows because the app isn't code signed.
 
-ADB itself ships with the app for Windows (see `vendor/platform-tools/`) — no separate Android Platform Tools install
-or `PATH` setup needed. On other platforms the bundled binary does not apply and PixVault falls back to an `adb` on
-your `PATH`. Plug your phone in, enable USB debugging, and accept the "Allow USB debugging" prompt on the device when
-it appears; the app will detect it automatically.
+## Setting up your phone
 
-## Installation
+You only need to do this once.
+
+1. Go to Settings > About phone and tap Build number 7 times to turn on Developer options.
+2. In Developer options, turn on USB debugging.
+3. Plug your phone in and allow USB debugging when it asks. Tick "Always allow from this computer" so it doesn't ask every time.
+
+Menu names differ a bit between phones. If your phone still isn't found you may need its USB driver, mostly on Samsungs.
+
+## Using it
+
+1. Pick the folder on your phone you want to back up, e.g. `DCIM/Camera`.
+2. Pick where to save it on your PC, or use the default `Pictures\PixVault Backup`.
+3. Go through each photo and video and keep or skip it. The arrow keys work too.
+4. PixVault copies across everything you kept and shows you what was saved.
+
+## Running from source
+
+Needs Python 3.11 or newer.
 
 ```bash
 git clone https://github.com/Griffy321/PixVault.git
 cd PixVault
 python -m venv .venv
-source .venv/bin/activate      # Windows: .venv\Scripts\activate
+.venv\Scripts\activate      # Mac/Linux: source .venv/bin/activate
 pip install -r requirements.txt
-```
-
-## Usage
-
-```bash
 python main.py
 ```
 
-The navigation window opens at `/sdcard` on the connected device. Browse into folders to find your photos and videos,
-then select the files you want to pull across.
+The Windows adb lives in `vendor/platform-tools/`. On Mac or Linux it uses the `adb` on your PATH instead.
+
+## Building a release
+
+Pushing a version tag builds the Windows zip on GitHub and puts it on a draft release (see [`.github/workflows/release.yml`](.github/workflows/release.yml)).
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+To build it yourself, `pip install pyinstaller` then `pyinstaller PixVault.spec --noconfirm`. It ends up in `dist/PixVault/`.
+
+## Where things are saved
+
+Your backups go wherever you pick. PixVault keeps its own logs and backup history in `%LOCALAPPDATA%\PixVault\`, or `~/.local/state/PixVault/` on Mac and Linux.
+
+## Supported files
+
+Most photo, RAW and video formats, e.g. `.jpg`, `.heic`, `.dng`, `.mp4` and `.mov`. The full list is in [`config/media_types.py`](config/media_types.py). HEIC and RAW files back up fine but don't get a preview yet.
 
 ## Project structure
 
-| Path             | Purpose                                                            |
-| ---------------- | ------------------------------------------------------------------ |
-| `main.py`        | Entry point — builds the `QApplication` and shows the first screen |
-| `app/`           | PySide6 screens and widgets                                        |
-| `device/`        | ADB wrapper, device filesystem navigation, and file saving          |
-| `local/`         | Scanning the destination folder on this PC                         |
-| `history/`       | Local record of every file backed up, in SQLite                    |
-| `config/`        | Media types, default destination, and stylesheet                   |
-| `visualisation/` | Image and video preview helpers                                    |
-| `pvlogging/`     | Application logging                                                |
-| `vendor/`        | Bundled third-party binaries (adb, from Android Platform Tools)    |
-
-## Where PixVault keeps its own files
-
-Your photos go wherever you pick as the destination (`~/Pictures/PixVault Backup` by default). PixVault's own logs and
-the backup-history database live outside the project folder, under `%LOCALAPPDATA%\PixVault\` on Windows and
-`~/.local/state/PixVault/` elsewhere, so a packaged build can still write to them.
-
-## Supported media
-
-Common photo, RAW, and video formats — `.jpg`, `.png`, `.heic`, and `.webp` through to `.dng`, `.cr3`, `.nef`, `.mp4`,
-`.mov`, and `.mkv`. The full list is defined in [`config/media_types.py`](config/media_types.py).
+| Path             | What's in it                                            |
+| ---------------- | ------------------------------------------------------- |
+| `main.py`        | Starts the app                                          |
+| `app/`           | The screens                                             |
+| `device/`        | Talking to the phone over ADB, browsing it, saving files |
+| `local/`         | Scanning the backup folder on your PC                   |
+| `history/`       | The record of everything backed up, in SQLite           |
+| `config/`        | File types, the default save folder and styling         |
+| `visualisation/` | Photo and video previews                                |
+| `pvlogging/`     | Logging                                                 |
+| `vendor/`        | The bundled adb                                         |
 
 ## Contributing
 
-Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, code style, and how to open a pull
-request. Please open an issue to discuss anything larger than a small fix before starting work.
+See [CONTRIBUTING.md](CONTRIBUTING.md). For anything bigger than a small fix, open an issue first.
 
 ## License
 
-Licensed under the Apache License 2.0 — see [LICENSE](LICENSE).
+Apache 2.0, see [LICENSE](LICENSE).
